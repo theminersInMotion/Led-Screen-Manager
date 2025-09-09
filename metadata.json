@@ -1,0 +1,5 @@
+{
+  "name": "LED Screen Manager",
+  "description": "An advanced tool to calculate specifications for LED screen setups, including pixel count, aspect ratio, power requirements, breaker needs, and Novastar video processor port allocation.",
+  "requestFramePermissions": []
+}
