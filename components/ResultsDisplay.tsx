@@ -2,7 +2,7 @@
 import React from 'react';
 import type { CalculationResults, ScreenConfig } from '../types';
 import { ResultCard } from './ui/ResultCard';
-import { PixelIcon, RatioIcon, PowerIcon, BreakerIcon, CableIcon } from './icons';
+import { PixelIcon, RatioIcon, PowerIcon, BreakerIcon, CableIcon, DimensionIcon } from './icons';
 import { WiringDiagram } from './WiringDiagram';
 
 interface ResultsDisplayProps {
@@ -24,18 +24,24 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
             subValue={`${results.totalPixels.toLocaleString()} pixels`}
           />
           <ResultCard
+            icon={<DimensionIcon />}
+            label="Total Screen Size"
+            value={`${results.totalWidthM.toFixed(2)}m x ${results.totalHeightM.toFixed(2)}m`}
+            subValue={`${results.totalWidthFt.toFixed(2)}' x ${results.totalHeightFt.toFixed(2)}' (${results.totalWidthIn.toFixed(0)}" x ${results.totalHeightIn.toFixed(0)}")`}
+          />
+          <ResultCard
             icon={<RatioIcon />}
             label="Aspect Ratio"
             value={results.aspectRatio}
           />
+          
+          {/* Row 2: Infrastructure Totals */}
           <ResultCard
             icon={<PowerIcon />}
             label="Total Power Draw"
             value={`${results.totalPowerW.toLocaleString()} W`}
             subValue={`${results.totalAmps.toFixed(2)} Amps`}
           />
-          
-          {/* Row 2: Infrastructure Totals */}
           <ResultCard
             icon={<BreakerIcon />}
             label="Total 15A Breakers"

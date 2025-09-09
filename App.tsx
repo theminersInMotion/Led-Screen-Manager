@@ -10,6 +10,8 @@ const App: React.FC = () => {
   const [config, setConfig] = useState<ScreenConfig>({
     cabinetWidthPx: 128,
     cabinetHeightPx: 128,
+    cabinetWidthCm: 50,
+    cabinetHeightCm: 50,
     cabinetsHorizontal: 16,
     cabinetsVertical: 9,
     powerPerCabinetW: 150,
@@ -25,6 +27,8 @@ const App: React.FC = () => {
     const {
       cabinetWidthPx,
       cabinetHeightPx,
+      cabinetWidthCm,
+      cabinetHeightCm,
       cabinetsHorizontal,
       cabinetsVertical,
       powerPerCabinetW,
@@ -34,7 +38,7 @@ const App: React.FC = () => {
 
     if (
       !cabinetWidthPx || !cabinetHeightPx || !cabinetsHorizontal || !cabinetsVertical || 
-      !powerPerCabinetW || !voltage || !portCapacityPx
+      !powerPerCabinetW || !voltage || !portCapacityPx || !cabinetWidthCm || !cabinetHeightCm
     ) {
       return {
         totalWidthPx: 0,
@@ -49,6 +53,12 @@ const App: React.FC = () => {
         cabinetsPerPort: 0,
         cabinetsPer15ABreaker: 0,
         cabinetsPer20ABreaker: 0,
+        totalWidthM: 0,
+        totalHeightM: 0,
+        totalWidthFt: 0,
+        totalHeightFt: 0,
+        totalWidthIn: 0,
+        totalHeightIn: 0,
       };
     }
 
@@ -69,14 +79,20 @@ const App: React.FC = () => {
     const breakers20A = Math.ceil(totalAmps / AMPS_20A_80_PERCENT);
 
     const requiredPorts = Math.ceil(totalPixels / portCapacityPx);
-
-    // New Calculations
+    
     const pixelsPerCabinet = cabinetWidthPx * cabinetHeightPx;
     const cabinetsPerPort = pixelsPerCabinet > 0 ? Math.floor(portCapacityPx / pixelsPerCabinet) : 0;
     
     const ampsPerCabinet = powerPerCabinetW / voltage;
     const cabinetsPer15ABreaker = ampsPerCabinet > 0 ? Math.floor(AMPS_15A_80_PERCENT / ampsPerCabinet) : 0;
     const cabinetsPer20ABreaker = ampsPerCabinet > 0 ? Math.floor(AMPS_20A_80_PERCENT / ampsPerCabinet) : 0;
+
+    const totalWidthM = (cabinetsHorizontal * cabinetWidthCm) / 100;
+    const totalHeightM = (cabinetsVertical * cabinetHeightCm) / 100;
+    const totalWidthFt = totalWidthM * 3.28084;
+    const totalHeightFt = totalHeightM * 3.28084;
+    const totalWidthIn = totalWidthM * 39.3701;
+    const totalHeightIn = totalHeightM * 39.3701;
 
     return {
       totalWidthPx,
@@ -91,6 +107,12 @@ const App: React.FC = () => {
       cabinetsPerPort: isNaN(cabinetsPerPort) ? 0 : cabinetsPerPort,
       cabinetsPer15ABreaker: isNaN(cabinetsPer15ABreaker) ? 0 : cabinetsPer15ABreaker,
       cabinetsPer20ABreaker: isNaN(cabinetsPer20ABreaker) ? 0 : cabinetsPer20ABreaker,
+      totalWidthM,
+      totalHeightM,
+      totalWidthFt,
+      totalHeightFt,
+      totalWidthIn,
+      totalHeightIn,
     };
   }, [config]);
 

@@ -2,6 +2,8 @@
 export interface ScreenConfig {
   cabinetWidthPx: number;
   cabinetHeightPx: number;
+  cabinetWidthCm: number;
+  cabinetHeightCm: number;
   cabinetsHorizontal: number;
   cabinetsVertical: number;
   powerPerCabinetW: number;
@@ -22,6 +24,12 @@ export interface CalculationResults {
   cabinetsPerPort: number;
   cabinetsPer15ABreaker: number;
   cabinetsPer20ABreaker: number;
+  totalWidthM: number;
+  totalHeightM: number;
+  totalWidthFt: number;
+  totalHeightFt: number;
+  totalWidthIn: number;
+  totalHeightIn: number;
 }
 
 export interface SelectOption {

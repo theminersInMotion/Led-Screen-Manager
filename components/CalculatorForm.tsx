@@ -43,6 +43,21 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfig
           onChange={(e) => handleInputChange('cabinetHeightPx', e.target.value)}
         />
 
+        {/* Cabinet Physical Size */}
+        <div className="sm:col-span-2 font-semibold text-brand-text-secondary text-sm mt-4 mb-[-8px]">CABINET PHYSICAL SIZE</div>
+        <Input
+          label="Width (cm)"
+          type="number"
+          value={config.cabinetWidthCm.toString()}
+          onChange={(e) => handleInputChange('cabinetWidthCm', e.target.value)}
+        />
+        <Input
+          label="Height (cm)"
+          type="number"
+          value={config.cabinetHeightCm.toString()}
+          onChange={(e) => handleInputChange('cabinetHeightCm', e.target.value)}
+        />
+
         {/* Screen Layout */}
         <div className="sm:col-span-2 font-semibold text-brand-text-secondary text-sm mt-4 mb-[-8px]">SCREEN LAYOUT</div>
         <Input

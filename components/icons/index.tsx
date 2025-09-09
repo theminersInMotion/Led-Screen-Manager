@@ -6,3 +6,4 @@ export * from './BreakerIcon';
 export * from './CableIcon';
 export * from './Logo';
 export * from './DataFlowIcon';
+export * from './DimensionIcon';

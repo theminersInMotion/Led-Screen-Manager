@@ -22,6 +22,7 @@ const ASSETS_TO_CACHE = [
   '/components/icons/CableIcon.tsx',
   '/components/icons/Logo.tsx',
   '/components/icons/DataFlowIcon.tsx',
+  '/components/icons/DimensionIcon.tsx',
   '/manifest.json',
   '/icons/icon-192x192.svg',
   '/icons/icon-512x512.svg'
