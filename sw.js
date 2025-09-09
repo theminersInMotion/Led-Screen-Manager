@@ -1,3 +1,4 @@
+
 const CACHE_NAME = 'led-screen-manager-v1';
 const ASSETS_TO_CACHE = [
   '/',
@@ -23,6 +24,8 @@ const ASSETS_TO_CACHE = [
   '/components/icons/Logo.tsx',
   '/components/icons/DataFlowIcon.tsx',
   '/components/icons/DimensionIcon.tsx',
+  '/components/icons/ProcessorIcon.tsx',
+  '/components/icons/CabinetIcon.tsx',
   '/manifest.json',
   '/icons/icon-192x192.svg',
   '/icons/icon-512x512.svg'

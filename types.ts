@@ -9,11 +9,13 @@ export interface ScreenConfig {
   powerPerCabinetW: number;
   voltage: number;
   portCapacityPx: number;
+  processorPorts: number;
 }
 
 export interface CalculationResults {
   totalWidthPx: number;
   totalHeightPx: number;
+  totalCabinets: number;
   totalPixels: number;
   aspectRatio: string;
   totalPowerW: number;
@@ -21,6 +23,7 @@ export interface CalculationResults {
   breakers15A: number;
   breakers20A: number;
   requiredPorts: number;
+  totalProcessors: number;
   cabinetsPerPort: number;
   cabinetsPer15ABreaker: number;
   cabinetsPer20ABreaker: number;
@@ -35,4 +38,10 @@ export interface CalculationResults {
 export interface SelectOption {
     label: string;
     value: number;
+}
+
+export interface ProcessorPreset {
+  name: string;
+  capacity: number;
+  ports: number;
 }

@@ -1,10 +1,10 @@
 
 import React from 'react';
-import type { ScreenConfig } from '../types';
+import type { ScreenConfig, ProcessorPreset } from '../types';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
-import { VOLTAGE_OPTIONS } from '../constants';
+import { VOLTAGE_OPTIONS, PROCESSOR_PRESETS } from '../constants';
 
 interface CalculatorFormProps {
   config: ScreenConfig;
@@ -13,9 +13,6 @@ interface CalculatorFormProps {
 
 export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfigChange }) => {
     
-  // FIX: All errors stemmed from this function's signature. The `value` from an input's onChange event is always a string.
-  // The previous type `ScreenConfig[K]` (a number) caused a mismatch at call sites and within this function's logic.
-  // The signature is updated to accept a `string`, and the logic is simplified to handle string parsing correctly.
   const handleInputChange = <K extends keyof ScreenConfig>(key: K, value: string) => {
       const numericValue = parseFloat(value);
       if (!isNaN(numericValue) && numericValue >= 0) {
@@ -23,6 +20,13 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfig
       } else if (value === '') {
         onConfigChange({ [key]: 0 as ScreenConfig[K]});
       }
+  };
+
+  const handlePresetClick = (preset: ProcessorPreset) => {
+    onConfigChange({
+      portCapacityPx: preset.capacity,
+      processorPorts: preset.ports,
+    });
   };
 
   return (
@@ -89,14 +93,35 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfig
         />
 
         {/* Video Processor */}
-        <div className="sm:col-span-2 font-semibold text-brand-text-secondary text-sm mt-4 mb-[-8px]">VIDEO PROCESSOR</div>
-        <Input
-          label="Pixels per Port"
-          type="number"
-          value={config.portCapacityPx.toString()}
-          onChange={(e) => handleInputChange('portCapacityPx', e.target.value)}
-          helperText="e.g., Novastar VX4S: 650,000"
-        />
+        <div className="sm:col-span-2 font-semibold text-brand-text-secondary text-sm mt-4 mb-[-8px]">NOVASTAR PROCESSOR</div>
+        <div className="sm:col-span-2">
+            <Input
+              label="Pixels per Port"
+              type="number"
+              value={config.portCapacityPx.toString()}
+              onChange={(e) => handleInputChange('portCapacityPx', e.target.value)}
+              helperText="Enter a custom value or select a preset below."
+            />
+        </div>
+        <div className="sm:col-span-2 mt-2">
+            <ul className="space-y-2">
+                {PROCESSOR_PRESETS.map((preset) => (
+                    <li key={preset.name} className="flex items-center justify-between bg-brand-primary p-2 rounded-md border border-gray-600/50">
+                        <div>
+                            <p className="font-semibold text-brand-text-primary text-sm">{preset.name}</p>
+                            <p className="text-xs text-brand-text-secondary">{preset.capacity.toLocaleString()} pixels/port • {preset.ports} ports total</p>
+                        </div>
+                        <button
+                            onClick={() => handlePresetClick(preset)}
+                            className="bg-brand-accent/20 text-brand-accent text-xs font-bold py-1 px-3 rounded-md hover:bg-brand-accent/40 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                            aria-label={`Use ${preset.name} settings`}
+                        >
+                            Use
+                        </button>
+                    </li>
+                ))}
+            </ul>
+        </div>
       </div>
     </Card>
   );

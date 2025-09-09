@@ -2,8 +2,9 @@
 import React from 'react';
 import type { CalculationResults, ScreenConfig } from '../types';
 import { ResultCard } from './ui/ResultCard';
-import { PixelIcon, RatioIcon, PowerIcon, BreakerIcon, CableIcon, DimensionIcon } from './icons';
+import { PixelIcon, RatioIcon, PowerIcon, BreakerIcon, CableIcon, DimensionIcon, ProcessorIcon, CabinetIcon } from './icons';
 import { WiringDiagram } from './WiringDiagram';
+import { PROCESSOR_PRESETS } from '../constants';
 
 interface ResultsDisplayProps {
   results: CalculationResults;
@@ -11,6 +12,9 @@ interface ResultsDisplayProps {
 }
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config }) => {
+  const selectedProcessor = PROCESSOR_PRESETS.find(p => p.capacity === config.portCapacityPx && p.ports === config.processorPorts);
+  const processorName = selectedProcessor ? selectedProcessor.name : 'Custom Config';
+  
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -22,6 +26,12 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
             label="Total Resolution"
             value={`${results.totalWidthPx.toLocaleString()} x ${results.totalHeightPx.toLocaleString()} px`}
             subValue={`${results.totalPixels.toLocaleString()} pixels`}
+          />
+          <ResultCard
+            icon={<CabinetIcon />}
+            label="Total Cabinets"
+            value={results.totalCabinets.toLocaleString()}
+            subValue={`${config.cabinetsHorizontal} H x ${config.cabinetsVertical} V`}
           />
           <ResultCard
             icon={<DimensionIcon />}
@@ -58,6 +68,12 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
             icon={<CableIcon />}
             label="Total Novastar RJ45 Ports"
             value={`${results.requiredPorts.toLocaleString()}`}
+          />
+          <ResultCard
+            icon={<ProcessorIcon />}
+            label="Processors Needed"
+            value={`${results.totalProcessors.toLocaleString()}`}
+            subValue={processorName}
           />
 
           {/* Row 3: Unit Capacity */}

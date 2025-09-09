@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { CalculatorForm } from './components/CalculatorForm';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import type { ScreenConfig, CalculationResults } from './types';
-import { VOLTAGE_OPTIONS, NOVASTAR_PORT_CAPACITY } from './constants';
+import { VOLTAGE_OPTIONS, PROCESSOR_PRESETS } from './constants';
 import { Logo } from './components/icons/Logo';
 
 const App: React.FC = () => {
@@ -16,7 +16,8 @@ const App: React.FC = () => {
     cabinetsVertical: 9,
     powerPerCabinetW: 150,
     voltage: VOLTAGE_OPTIONS[0].value,
-    portCapacityPx: NOVASTAR_PORT_CAPACITY,
+    portCapacityPx: PROCESSOR_PRESETS[1].capacity, // Default to VX400
+    processorPorts: PROCESSOR_PRESETS[1].ports,
   });
 
   const handleConfigChange = useCallback((newConfig: Partial<ScreenConfig>) => {
@@ -33,7 +34,8 @@ const App: React.FC = () => {
       cabinetsVertical,
       powerPerCabinetW,
       voltage,
-      portCapacityPx
+      portCapacityPx,
+      processorPorts
     } = config;
 
     if (
@@ -43,6 +45,7 @@ const App: React.FC = () => {
       return {
         totalWidthPx: 0,
         totalHeightPx: 0,
+        totalCabinets: 0,
         totalPixels: 0,
         aspectRatio: '0:0',
         totalPowerW: 0,
@@ -50,6 +53,7 @@ const App: React.FC = () => {
         breakers15A: 0,
         breakers20A: 0,
         requiredPorts: 0,
+        totalProcessors: 0,
         cabinetsPerPort: 0,
         cabinetsPer15ABreaker: 0,
         cabinetsPer20ABreaker: 0,
@@ -79,6 +83,7 @@ const App: React.FC = () => {
     const breakers20A = Math.ceil(totalAmps / AMPS_20A_80_PERCENT);
 
     const requiredPorts = Math.ceil(totalPixels / portCapacityPx);
+    const totalProcessors = processorPorts > 0 ? Math.ceil(requiredPorts / processorPorts) : 0;
     
     const pixelsPerCabinet = cabinetWidthPx * cabinetHeightPx;
     const cabinetsPerPort = pixelsPerCabinet > 0 ? Math.floor(portCapacityPx / pixelsPerCabinet) : 0;
@@ -97,6 +102,7 @@ const App: React.FC = () => {
     return {
       totalWidthPx,
       totalHeightPx,
+      totalCabinets,
       totalPixels,
       aspectRatio,
       totalPowerW,
@@ -104,6 +110,7 @@ const App: React.FC = () => {
       breakers15A: isNaN(breakers15A) ? 0 : breakers15A,
       breakers20A: isNaN(breakers20A) ? 0 : breakers20A,
       requiredPorts: isNaN(requiredPorts) ? 0 : requiredPorts,
+      totalProcessors: isNaN(totalProcessors) ? 0 : totalProcessors,
       cabinetsPerPort: isNaN(cabinetsPerPort) ? 0 : cabinetsPerPort,
       cabinetsPer15ABreaker: isNaN(cabinetsPer15ABreaker) ? 0 : cabinetsPer15ABreaker,
       cabinetsPer20ABreaker: isNaN(cabinetsPer20ABreaker) ? 0 : cabinetsPer20ABreaker,

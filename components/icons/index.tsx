@@ -7,3 +7,5 @@ export * from './CableIcon';
 export * from './Logo';
 export * from './DataFlowIcon';
 export * from './DimensionIcon';
+export * from './ProcessorIcon';
+export * from './CabinetIcon';
