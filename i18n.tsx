@@ -18,8 +18,8 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchTranslations = async () => {
       try {
         const [enResponse, zhResponse] = await Promise.all([
-          fetch('/en.json'),
-          fetch('/zh.json'),
+          fetch('./en.json'),
+          fetch('./zh.json'),
         ]);
         if (!enResponse.ok || !zhResponse.ok) {
           throw new Error('Failed to fetch translation files.');
