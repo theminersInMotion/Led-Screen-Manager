@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import type { ScreenConfig, ProcessorPreset } from '../types';
 import { Card } from './ui/Card';
@@ -122,6 +123,33 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfig
                 ))}
             </ul>
         </div>
+        
+        {/* Cost Estimation */}
+        <div className="sm:col-span-2 font-semibold text-brand-text-secondary text-sm mt-4 mb-[-8px]">COST ESTIMATION (OPTIONAL)</div>
+        <Input
+          label="Price per Cabinet ($)"
+          type="number"
+          value={config.cabinetPrice.toString()}
+          onChange={(e) => handleInputChange('cabinetPrice', e.target.value)}
+        />
+        <Input
+          label="Price per Processor ($)"
+          type="number"
+          value={config.processorPrice.toString()}
+          onChange={(e) => handleInputChange('processorPrice', e.target.value)}
+        />
+        <Input
+          label="Player Quantity"
+          type="number"
+          value={config.playerQuantity.toString()}
+          onChange={(e) => handleInputChange('playerQuantity', e.target.value)}
+        />
+        <Input
+          label="Price per Player ($)"
+          type="number"
+          value={config.playerPrice.toString()}
+          onChange={(e) => handleInputChange('playerPrice', e.target.value)}
+        />
       </div>
     </Card>
   );

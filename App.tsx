@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { CalculatorForm } from './components/CalculatorForm';
 import { ResultsDisplay } from './components/ResultsDisplay';
@@ -18,6 +19,10 @@ const App: React.FC = () => {
     voltage: VOLTAGE_OPTIONS[0].value,
     portCapacityPx: PROCESSOR_PRESETS[1].capacity, // Default to VX400
     processorPorts: PROCESSOR_PRESETS[1].ports,
+    cabinetPrice: 0,
+    processorPrice: 0,
+    playerPrice: 0,
+    playerQuantity: 1,
   });
 
   const handleConfigChange = useCallback((newConfig: Partial<ScreenConfig>) => {
@@ -35,7 +40,11 @@ const App: React.FC = () => {
       powerPerCabinetW,
       voltage,
       portCapacityPx,
-      processorPorts
+      processorPorts,
+      cabinetPrice,
+      processorPrice,
+      playerPrice,
+      playerQuantity,
     } = config;
 
     if (
@@ -63,6 +72,10 @@ const App: React.FC = () => {
         totalHeightFt: 0,
         totalWidthIn: 0,
         totalHeightIn: 0,
+        totalCabinetPrice: 0,
+        totalProcessorPrice: 0,
+        totalPlayerPrice: 0,
+        grandTotalPrice: 0,
       };
     }
 
@@ -99,6 +112,11 @@ const App: React.FC = () => {
     const totalWidthIn = totalWidthM * 39.3701;
     const totalHeightIn = totalHeightM * 39.3701;
 
+    const totalCabinetPrice = totalCabinets * cabinetPrice;
+    const totalProcessorPrice = totalProcessors * processorPrice;
+    const totalPlayerPrice = playerQuantity * playerPrice;
+    const grandTotalPrice = totalCabinetPrice + totalProcessorPrice + totalPlayerPrice;
+
     return {
       totalWidthPx,
       totalHeightPx,
@@ -120,6 +138,10 @@ const App: React.FC = () => {
       totalHeightFt,
       totalWidthIn,
       totalHeightIn,
+      totalCabinetPrice,
+      totalProcessorPrice,
+      totalPlayerPrice,
+      grandTotalPrice,
     };
   }, [config]);
 

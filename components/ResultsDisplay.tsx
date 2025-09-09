@@ -1,8 +1,9 @@
 
+
 import React from 'react';
 import type { CalculationResults, ScreenConfig } from '../types';
 import { ResultCard } from './ui/ResultCard';
-import { PixelIcon, RatioIcon, PowerIcon, BreakerIcon, CableIcon, DimensionIcon, ProcessorIcon, CabinetIcon } from './icons';
+import { PixelIcon, RatioIcon, PowerIcon, BreakerIcon, CableIcon, DimensionIcon, ProcessorIcon, CabinetIcon, PriceIcon, PlayerIcon } from './icons';
 import { WiringDiagram } from './WiringDiagram';
 import { PROCESSOR_PRESETS } from '../constants';
 
@@ -15,6 +16,10 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
   const selectedProcessor = PROCESSOR_PRESETS.find(p => p.capacity === config.portCapacityPx && p.ports === config.processorPorts);
   const processorName = selectedProcessor ? selectedProcessor.name : 'Custom Config';
   
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -76,7 +81,37 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
             subValue={processorName}
           />
 
-          {/* Row 3: Unit Capacity */}
+          {/* Row 3: Cost Estimation (Conditional) */}
+          {results.grandTotalPrice > 0 && (
+            <>
+              <ResultCard
+                icon={<PriceIcon />}
+                label="Total Cabinet Cost"
+                value={formatCurrency(results.totalCabinetPrice)}
+                subValue={config.cabinetPrice > 0 ? `${formatCurrency(config.cabinetPrice)} / cabinet` : undefined}
+              />
+              <ResultCard
+                icon={<PriceIcon />}
+                label="Total Processor Cost"
+                value={formatCurrency(results.totalProcessorPrice)}
+                subValue={config.processorPrice > 0 ? `${results.totalProcessors} x ${formatCurrency(config.processorPrice)}` : undefined}
+              />
+              <ResultCard
+                icon={<PlayerIcon />}
+                label="Total Player Cost"
+                value={formatCurrency(results.totalPlayerPrice)}
+                subValue={config.playerPrice > 0 ? `${config.playerQuantity} x ${formatCurrency(config.playerPrice)}` : undefined}
+              />
+              <ResultCard
+                icon={<PriceIcon />}
+                label="Estimated Grand Total"
+                value={formatCurrency(results.grandTotalPrice)}
+                subValue="Cabinets + Processors + Players"
+              />
+            </>
+          )}
+
+          {/* Row 4: Unit Capacity */}
           <ResultCard
             icon={<BreakerIcon />}
             label="Cabinets per 15A Breaker"

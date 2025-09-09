@@ -1,4 +1,5 @@
 
+
 export * from './PixelIcon';
 export * from './RatioIcon';
 export * from './PowerIcon';
@@ -9,3 +10,5 @@ export * from './DataFlowIcon';
 export * from './DimensionIcon';
 export * from './ProcessorIcon';
 export * from './CabinetIcon';
+export * from './PriceIcon';
+export * from './PlayerIcon';

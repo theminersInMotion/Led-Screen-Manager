@@ -1,4 +1,5 @@
 
+
 export interface ScreenConfig {
   cabinetWidthPx: number;
   cabinetHeightPx: number;
@@ -10,6 +11,10 @@ export interface ScreenConfig {
   voltage: number;
   portCapacityPx: number;
   processorPorts: number;
+  cabinetPrice: number;
+  processorPrice: number;
+  playerPrice: number;
+  playerQuantity: number;
 }
 
 export interface CalculationResults {
@@ -33,6 +38,10 @@ export interface CalculationResults {
   totalHeightFt: number;
   totalWidthIn: number;
   totalHeightIn: number;
+  totalCabinetPrice: number;
+  totalProcessorPrice: number;
+  totalPlayerPrice: number;
+  grandTotalPrice: number;
 }
 
 export interface SelectOption {
