@@ -1,5 +1,3 @@
-
-
 export interface ScreenConfig {
   cabinetWidthPx: number;
   cabinetHeightPx: number;
@@ -51,6 +49,7 @@ export interface SelectOption {
 
 export interface ProcessorPreset {
   name: string;
+  tKey: string;
   capacity: number;
   ports: number;
 }

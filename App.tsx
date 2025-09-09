@@ -1,13 +1,14 @@
-
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { CalculatorForm } from './components/CalculatorForm';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import type { ScreenConfig, CalculationResults } from './types';
 import { VOLTAGE_OPTIONS, PROCESSOR_PRESETS } from './constants';
 import { Logo } from './components/icons/Logo';
+import { LanguageSwitcher } from './components/LanguageSwitcher';
+import { useI18n } from './i18n';
 
 const App: React.FC = () => {
+  const { t } = useI18n();
   const [config, setConfig] = useState<ScreenConfig>({
     cabinetWidthPx: 128,
     cabinetHeightPx: 128,
@@ -148,16 +149,19 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-brand-primary p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-7xl mx-auto">
-        <header className="flex items-center gap-4 mb-8">
-          <Logo />
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-brand-text-primary tracking-tight">
-              LED Screen Manager
-            </h1>
-            <p className="text-brand-text-secondary text-sm sm:text-base">
-              Calculate specifications for your video wall setup.
-            </p>
+        <header className="flex items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-4">
+            <Logo />
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-brand-text-primary tracking-tight">
+                {t('appName')}
+              </h1>
+              <p className="text-brand-text-secondary text-sm sm:text-base">
+                {t('appDescription')}
+              </p>
+            </div>
           </div>
+          <LanguageSwitcher />
         </header>
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">

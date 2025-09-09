@@ -1,9 +1,9 @@
-
 import React, { useState, useMemo } from 'react';
 import type { ScreenConfig, CalculationResults } from '../types';
 import { Card } from './ui/Card';
 import { Toggle } from './ui/Toggle';
 import { CableIcon, PowerIcon, DataFlowIcon } from './icons';
+import { useI18n } from '../i18n';
 
 interface WiringDiagramProps {
   config: ScreenConfig;
@@ -19,6 +19,7 @@ const WIRING_COLORS = [
 
 export const WiringDiagram: React.FC<WiringDiagramProps> = ({ config, results }) => {
   const [view, setView] = useState<DiagramView>('data');
+  const { t } = useI18n();
 
   const { cabinetsHorizontal, cabinetsVertical } = config;
 
@@ -61,15 +62,15 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({ config, results })
   });
 
   return (
-    <Card title="Wiring Diagram">
+    <Card title={t('wiringDiagram')}>
         <div className="flex flex-col gap-4">
             <div className="flex justify-center sm:justify-end">
                 <Toggle
                     value={view}
                     onChange={(newView) => setView(newView)}
                     options={[
-                        { value: 'data', label: <div className="flex items-center gap-2"><DataFlowIcon /> Data</div> },
-                        { value: 'power', label: <div className="flex items-center gap-2"><PowerIcon /> Power (20A)</div> }
+                        { value: 'data', label: <div className="flex items-center gap-2"><DataFlowIcon /> {t('data')}</div> },
+                        { value: 'power', label: <div className="flex items-center gap-2"><PowerIcon /> {t('power20A')}</div> }
                     ]}
                 />
             </div>
@@ -166,8 +167,8 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({ config, results })
                 </div>
             ) : (
                 <div className="text-center text-brand-text-secondary p-8 bg-brand-primary rounded-md">
-                    <p>Not enough information to generate a wiring diagram.</p>
-                    <p className="text-sm">Please ensure cabinet counts and power/port capacities are greater than zero.</p>
+                    <p>{t('wiringDiagramError')}</p>
+                    <p className="text-sm">{t('wiringDiagramErrorHint')}</p>
                 </div>
             )}
         </div>
