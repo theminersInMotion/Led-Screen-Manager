@@ -1,4 +1,6 @@
-import React, { createContext, useState, useContext, useMemo, useCallback, useEffect } from 'react';
+import React, { createContext, useState, useContext, useMemo, useCallback } from 'react';
+import { en } from './en';
+import { zh } from './zh';
 
 type Language = 'en' | 'zh';
 
@@ -10,29 +12,10 @@ interface I18nContextType {
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
+const translations = { en, zh };
+
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>('en');
-  const [translations, setTranslations] = useState<Record<string, Record<string, string>>>({});
-
-  useEffect(() => {
-    const fetchTranslations = async () => {
-      try {
-        const [enResponse, zhResponse] = await Promise.all([
-          fetch('./en.json'),
-          fetch('./zh.json'),
-        ]);
-        if (!enResponse.ok || !zhResponse.ok) {
-          throw new Error('Failed to fetch translation files.');
-        }
-        const en = await enResponse.json();
-        const zh = await zhResponse.json();
-        setTranslations({ en, zh });
-      } catch (error) {
-        console.error('Failed to load translations:', error);
-      }
-    };
-    fetchTranslations();
-  }, []);
 
   const t = useCallback((key: string, replacements?: Record<string, string | number>): string => {
     const langTranslations = translations[language] || {};
@@ -44,7 +27,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
     }
     return translation;
-  }, [language, translations]);
+  }, [language]);
 
   const value = useMemo(() => ({
     language,
