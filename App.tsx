@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { CalculatorForm } from './components/CalculatorForm';
 import { ResultsDisplay } from './components/ResultsDisplay';
-import type { ScreenConfig, CalculationResults } from './types';
+import type { ScreenConfig, CalculationResults, BreakerResult } from './types';
 import { VOLTAGE_OPTIONS, PROCESSOR_PRESETS } from './constants';
 import { Logo } from './components/icons/Logo';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
@@ -60,13 +60,11 @@ const App: React.FC = () => {
         aspectRatio: '0:0',
         totalPowerW: 0,
         totalAmps: 0,
-        breakers15A: 0,
-        breakers20A: 0,
+        breakerResults: [],
+        cabinetsPerBreaker: [],
         requiredPorts: 0,
         totalProcessors: 0,
         cabinetsPerPort: 0,
-        cabinetsPer15ABreaker: 0,
-        cabinetsPer20ABreaker: 0,
         totalWidthM: 0,
         totalHeightM: 0,
         totalWidthFt: 0,
@@ -91,20 +89,26 @@ const App: React.FC = () => {
     const divisor = gcd(totalWidthPx, totalHeightPx);
     const aspectRatio = `${totalWidthPx / divisor}:${totalHeightPx / divisor}`;
 
-    const AMPS_15A_80_PERCENT = 15 * 0.8;
-    const AMPS_20A_80_PERCENT = 20 * 0.8;
-    const breakers15A = Math.ceil(totalAmps / AMPS_15A_80_PERCENT);
-    const breakers20A = Math.ceil(totalAmps / AMPS_20A_80_PERCENT);
+    const selectedVoltageStandard = VOLTAGE_OPTIONS.find(v => v.value === voltage) || VOLTAGE_OPTIONS[0];
+
+    const breakerResults: BreakerResult[] = selectedVoltageStandard.breakers.map(breakerAmps => {
+      const safeAmps = breakerAmps * 0.8;
+      const count = Math.ceil(totalAmps / safeAmps);
+      return { amps: breakerAmps, count: isNaN(count) ? 0 : count };
+    });
+
+    const ampsPerCabinet = powerPerCabinetW / voltage;
+    const cabinetsPerBreaker: BreakerResult[] = selectedVoltageStandard.breakers.map(breakerAmps => {
+        const safeAmps = breakerAmps * 0.8;
+        const count = ampsPerCabinet > 0 ? Math.floor(safeAmps / ampsPerCabinet) : 0;
+        return { amps: breakerAmps, count: isNaN(count) ? 0 : count };
+    });
 
     const requiredPorts = Math.ceil(totalPixels / portCapacityPx);
     const totalProcessors = processorPorts > 0 ? Math.ceil(requiredPorts / processorPorts) : 0;
     
     const pixelsPerCabinet = cabinetWidthPx * cabinetHeightPx;
     const cabinetsPerPort = pixelsPerCabinet > 0 ? Math.floor(portCapacityPx / pixelsPerCabinet) : 0;
-    
-    const ampsPerCabinet = powerPerCabinetW / voltage;
-    const cabinetsPer15ABreaker = ampsPerCabinet > 0 ? Math.floor(AMPS_15A_80_PERCENT / ampsPerCabinet) : 0;
-    const cabinetsPer20ABreaker = ampsPerCabinet > 0 ? Math.floor(AMPS_20A_80_PERCENT / ampsPerCabinet) : 0;
 
     const totalWidthM = (cabinetsHorizontal * cabinetWidthCm) / 100;
     const totalHeightM = (cabinetsVertical * cabinetHeightCm) / 100;
@@ -126,13 +130,11 @@ const App: React.FC = () => {
       aspectRatio,
       totalPowerW,
       totalAmps,
-      breakers15A: isNaN(breakers15A) ? 0 : breakers15A,
-      breakers20A: isNaN(breakers20A) ? 0 : breakers20A,
+      breakerResults,
+      cabinetsPerBreaker,
       requiredPorts: isNaN(requiredPorts) ? 0 : requiredPorts,
       totalProcessors: isNaN(totalProcessors) ? 0 : totalProcessors,
       cabinetsPerPort: isNaN(cabinetsPerPort) ? 0 : cabinetsPerPort,
-      cabinetsPer15ABreaker: isNaN(cabinetsPer15ABreaker) ? 0 : cabinetsPer15ABreaker,
-      cabinetsPer20ABreaker: isNaN(cabinetsPer20ABreaker) ? 0 : cabinetsPer20ABreaker,
       totalWidthM,
       totalHeightM,
       totalWidthFt,

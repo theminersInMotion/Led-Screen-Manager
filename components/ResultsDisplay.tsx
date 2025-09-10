@@ -58,18 +58,6 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
             subValue={`${results.totalAmps.toFixed(2)} ${t('amps')}`}
           />
           <ResultCard
-            icon={<BreakerIcon />}
-            label={t('total15ABreakers')}
-            value={`${results.breakers15A.toLocaleString()}`}
-            subValue={t('at80Capacity')}
-          />
-           <ResultCard
-            icon={<BreakerIcon />}
-            label={t('total20ABreakers')}
-            value={`${results.breakers20A.toLocaleString()}`}
-            subValue={t('at80Capacity')}
-          />
-          <ResultCard
             icon={<CableIcon />}
             label={t('totalNovastarPorts')}
             value={`${results.requiredPorts.toLocaleString()}`}
@@ -111,19 +99,27 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
             </>
           )}
 
-          {/* Row 4: Unit Capacity */}
-          <ResultCard
-            icon={<BreakerIcon />}
-            label={t('cabinetsPer15ABreaker')}
-            value={`${results.cabinetsPer15ABreaker.toLocaleString()}`}
-            subValue={t('at80Capacity')}
-          />
-          <ResultCard
-            icon={<BreakerIcon />}
-            label={t('cabinetsPer20ABreaker')}
-            value={`${results.cabinetsPer20ABreaker.toLocaleString()}`}
-            subValue={t('at80Capacity')}
-          />
+          {/* Row 4: Breaker Totals */}
+          {results.breakerResults.map(breaker => (
+            <ResultCard
+              key={`total-breaker-${breaker.amps}`}
+              icon={<BreakerIcon />}
+              label={t('totalBreakers', { amps: breaker.amps })}
+              value={breaker.count.toLocaleString()}
+              subValue={t('at80Capacity')}
+            />
+          ))}
+
+          {/* Row 5: Unit Capacity */}
+          {results.cabinetsPerBreaker.map(breaker => (
+            <ResultCard
+              key={`cabinets-per-breaker-${breaker.amps}`}
+              icon={<BreakerIcon />}
+              label={t('cabinetsPerBreaker', { amps: breaker.amps })}
+              value={breaker.count.toLocaleString()}
+              subValue={t('at80Capacity')}
+            />
+          ))}
           <ResultCard
             icon={<CableIcon />}
             label={t('cabinetsPerRJ45Port')}

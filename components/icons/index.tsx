@@ -12,3 +12,7 @@ export * from './ProcessorIcon';
 export * from './CabinetIcon';
 export * from './PriceIcon';
 export * from './PlayerIcon';
+export * from './TopLeftIcon';
+export * from './TopRightIcon';
+export * from './BottomLeftIcon';
+export * from './BottomRightIcon';

@@ -15,6 +15,11 @@ export interface ScreenConfig {
   playerQuantity: number;
 }
 
+export interface BreakerResult {
+  amps: number;
+  count: number;
+}
+
 export interface CalculationResults {
   totalWidthPx: number;
   totalHeightPx: number;
@@ -23,13 +28,11 @@ export interface CalculationResults {
   aspectRatio: string;
   totalPowerW: number;
   totalAmps: number;
-  breakers15A: number;
-  breakers20A: number;
+  breakerResults: BreakerResult[];
   requiredPorts: number;
   totalProcessors: number;
   cabinetsPerPort: number;
-  cabinetsPer15ABreaker: number;
-  cabinetsPer20ABreaker: number;
+  cabinetsPerBreaker: BreakerResult[];
   totalWidthM: number;
   totalHeightM: number;
   totalWidthFt: number;
@@ -52,4 +55,10 @@ export interface ProcessorPreset {
   tKey: string;
   capacity: number;
   ports: number;
+}
+
+export interface VoltageStandard {
+    key: string;
+    value: number;
+    breakers: number[];
 }

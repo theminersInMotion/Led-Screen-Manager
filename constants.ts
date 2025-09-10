@@ -1,9 +1,10 @@
-import type { ProcessorPreset } from './types';
+import type { ProcessorPreset, VoltageStandard } from './types';
 
-export const VOLTAGE_OPTIONS: { key: string; value: number }[] = [
-    { key: "voltage120", value: 120 },
-    { key: "voltage208", value: 208 },
-    { key: "voltage240", value: 240 },
+export const VOLTAGE_OPTIONS: VoltageStandard[] = [
+    { key: "voltage120", value: 120, breakers: [15, 20] },
+    { key: "voltage208", value: 208, breakers: [15, 20] },
+    { key: "voltage240", value: 240, breakers: [16, 20, 32] },
+    { key: "voltage220_china", value: 220, breakers: [10, 16, 25, 32] },
 ];
 
 export const NOVASTAR_PORT_CAPACITY = 650000;

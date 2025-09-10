@@ -30,6 +30,10 @@ const ASSETS_TO_CACHE = [
   './components/icons/CabinetIcon.tsx',
   './components/icons/PriceIcon.tsx',
   './components/icons/PlayerIcon.tsx',
+  './components/icons/TopLeftIcon.tsx',
+  './components/icons/TopRightIcon.tsx',
+  './components/icons/BottomLeftIcon.tsx',
+  './components/icons/BottomRightIcon.tsx',
   './manifest.json',
   './icons/icon-192x192.svg',
   './icons/icon-512x512.svg'
