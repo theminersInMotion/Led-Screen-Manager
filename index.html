@@ -24,6 +24,156 @@
         },
       }
     </script>
+    <style>
+      #print-mount-root {
+        display: none;
+      }
+
+      /* 
+        NEW PDF CAPTURE STYLES
+        This block is designed to be highly specific to override all app styles
+        for a clean, light-theme PDF output.
+      */
+      #print-mount-root.pdf-capture-mode {
+        display: block !important;
+        position: absolute;
+        left: -9999px; /* Hide off-screen */
+        top: 0;
+        width: 800px; /* Use a fixed width for consistent rendering */
+        background: #ffffff !important;
+        padding: 40px;
+        box-sizing: border-box;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+
+      /* Universal reset for all elements inside the capture area */
+      #print-mount-root.pdf-capture-mode * {
+        background: transparent !important;
+        color: #111827 !important; /* Default dark text */
+        border-color: #e5e7eb !important; /* Default light border */
+        box-shadow: none !important;
+        transform: none !important;
+        transition: none !important;
+      }
+
+      /* Ensure container background is white */
+      #print-mount-root.pdf-capture-mode {
+        background: #ffffff !important;
+      }
+
+      /* Style the main title */
+      #print-mount-root.pdf-capture-mode h1 {
+        font-size: 2rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 2rem !important;
+        color: #000000 !important;
+      }
+
+      /* Force a single-column grid layout */
+      #print-mount-root.pdf-capture-mode .print-container {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+      }
+
+      /* Style each result card */
+      #print-mount-root.pdf-capture-mode .result-card-print {
+        background-color: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 0.75rem !important;
+        padding: 1rem !important;
+      }
+
+      /* Style the icon's background container */
+      #print-mount-root.pdf-capture-mode .result-card-print > div:first-child {
+        background-color: #e0f7ff !important;
+        border-radius: 0.5rem !important;
+        padding: 0.75rem !important;
+      }
+
+      /* Style the icon SVG itself */
+      #print-mount-root.pdf-capture-mode .result-card-print svg {
+        color: #00bfff !important;
+      }
+
+      /* Style the main value text (e.g., "28,800 W") */
+      #print-mount-root.pdf-capture-mode .text-brand-text-primary {
+        color: #000000 !important;
+        font-weight: 700 !important;
+        font-size: 1.5rem !important;
+        line-height: 2rem !important;
+      }
+
+      /* Style the label and sub-value text */
+      #print-mount-root.pdf-capture-mode .text-brand-text-secondary {
+        color: #4b5563 !important; /* A pleasing dark gray */
+        font-size: 0.875rem !important;
+        line-height: 1.25rem !important;
+      }
+      /* END PDF CAPTURE STYLES */
+
+
+      @media print {
+        @page {
+          size: A4;
+          margin: 0.5in;
+        }
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          background-color: white !important;
+        }
+
+        /* 1. Hide everything on the page */
+        body * {
+          visibility: hidden;
+        }
+        
+        /* 2. Make the print container and everything inside it visible */
+        #print-mount-root, #print-mount-root * {
+          visibility: visible;
+        }
+        
+        /* 3. Position the print container to take over the whole page */
+        #print-mount-root {
+          display: block !important;
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+        }
+        
+        /* Styles for the content inside the print container */
+        .print-container {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 1rem !important;
+        }
+        .result-card-print {
+          background-color: #ffffff !important;
+          border: 1px solid #dddddd !important;
+          color: #000000 !important;
+          box-shadow: none !important;
+          page-break-inside: avoid;
+          transform: none !important;
+          transition: none !important;
+        }
+        .result-card-print p, .result-card-print h2, .result-card-print h3 {
+           color: #000000 !important;
+        }
+        .result-card-print svg {
+           color: #00bfff !important;
+        }
+        .result-card-print div:first-child {
+          background-color: #e0f7ff !important;
+        }
+        .no-print {
+          display: none !important;
+        }
+      }
+    </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script type="importmap">
 {
   "imports": {
@@ -38,6 +188,7 @@
 </head>
   <body class="bg-brand-primary text-brand-text-primary">
     <div id="root"></div>
+    <div id="print-mount-root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>

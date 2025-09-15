@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { CalculatorForm } from './components/CalculatorForm';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import type { ScreenConfig, CalculationResults, BreakerResult } from './types';
-import { VOLTAGE_OPTIONS, PROCESSOR_PRESETS } from './constants';
+import { VOLTAGE_OPTIONS, SYNC_PROCESSOR_PRESETS, ASYNC_PROCESSOR_PRESETS } from './constants';
 import { Logo } from './components/icons/Logo';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { useI18n } from './i18n';
@@ -16,14 +16,15 @@ const App: React.FC = () => {
     cabinetHeightCm: 50,
     cabinetsHorizontal: 16,
     cabinetsVertical: 9,
-    powerPerCabinetW: 150,
+    powerPerCabinetW: 200,
     voltage: VOLTAGE_OPTIONS[0].value,
-    portCapacityPx: PROCESSOR_PRESETS[1].capacity, // Default to VX400
-    processorPorts: PROCESSOR_PRESETS[1].ports,
+    portCapacityPx: SYNC_PROCESSOR_PRESETS[0].capacity, // Default to VX400
+    processorPorts: SYNC_PROCESSOR_PRESETS[0].ports,
     cabinetPrice: 0,
     processorPrice: 0,
     playerPrice: 0,
     playerQuantity: 1,
+    displayType: 'sync',
   });
 
   const handleConfigChange = useCallback((newConfig: Partial<ScreenConfig>) => {
@@ -105,8 +106,19 @@ const App: React.FC = () => {
     });
 
     const requiredPorts = Math.ceil(totalPixels / portCapacityPx);
-    const totalProcessors = processorPorts > 0 ? Math.ceil(requiredPorts / processorPorts) : 0;
     
+    const allPresets = [...SYNC_PROCESSOR_PRESETS, ...ASYNC_PROCESSOR_PRESETS];
+    const selectedPreset = allPresets.find(p => p.capacity === portCapacityPx && p.ports === processorPorts);
+
+    let totalProcessors = 0;
+    if (selectedPreset && selectedPreset.type === 'async') {
+        const processorsByPixels = selectedPreset.totalCapacity > 0 ? Math.ceil(totalPixels / selectedPreset.totalCapacity) : 0;
+        const processorsByPorts = processorPorts > 0 ? Math.ceil(requiredPorts / processorPorts) : 0;
+        totalProcessors = Math.max(processorsByPixels, processorsByPorts);
+    } else { // Sync or custom config
+        totalProcessors = processorPorts > 0 ? Math.ceil(requiredPorts / processorPorts) : 0;
+    }
+
     const pixelsPerCabinet = cabinetWidthPx * cabinetHeightPx;
     const cabinetsPerPort = pixelsPerCabinet > 0 ? Math.floor(portCapacityPx / pixelsPerCabinet) : 0;
 
@@ -151,7 +163,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-brand-primary p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-7xl mx-auto">
-        <header className="flex items-center justify-between gap-4 mb-8">
+        <header className="flex items-center justify-between gap-4 mb-8 no-print">
           <div className="flex items-center gap-4">
             <Logo />
             <div>
@@ -166,7 +178,7 @@ const App: React.FC = () => {
           <LanguageSwitcher />
         </header>
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 no-print">
             <CalculatorForm config={config} onConfigChange={handleConfigChange} />
           </div>
           <div className="lg:col-span-2">

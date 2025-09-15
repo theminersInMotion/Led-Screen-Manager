@@ -13,6 +13,7 @@ export interface ScreenConfig {
   processorPrice: number;
   playerPrice: number;
   playerQuantity: number;
+  displayType: 'sync' | 'async';
 }
 
 export interface BreakerResult {
@@ -53,8 +54,11 @@ export interface SelectOption {
 export interface ProcessorPreset {
   name: string;
   tKey: string;
-  capacity: number;
+  type: 'sync' | 'async';
+  capacity: number; // Per-port capacity
+  totalCapacity: number; // Total device capacity
   ports: number;
+  inputs: string;
 }
 
 export interface VoltageStandard {

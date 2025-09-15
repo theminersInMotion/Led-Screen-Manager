@@ -16,3 +16,5 @@ export * from './TopLeftIcon';
 export * from './TopRightIcon';
 export * from './BottomLeftIcon';
 export * from './BottomRightIcon';
+export * from './PrintIcon';
+export * from './DownloadIcon';

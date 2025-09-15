@@ -3,7 +3,8 @@ import type { ScreenConfig, ProcessorPreset } from '../types';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
-import { VOLTAGE_OPTIONS, PROCESSOR_PRESETS } from '../constants';
+import { Toggle } from './ui/Toggle';
+import { VOLTAGE_OPTIONS, SYNC_PROCESSOR_PRESETS, ASYNC_PROCESSOR_PRESETS, STANDARD_DIAGONAL_INCHES } from '../constants';
 import { useI18n } from '../i18n';
 
 interface CalculatorFormProps {
@@ -29,11 +30,51 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfig
       processorPorts: preset.ports,
     });
   };
+
+  const handleDiagonalPresetClick = (targetInches: number) => {
+    const { cabinetWidthCm, cabinetHeightCm } = config;
+    if (!cabinetWidthCm || !cabinetHeightCm) {
+        alert("Please set cabinet physical dimensions first.");
+        return;
+    }
+
+    const targetDiagonalCm = targetInches * 2.54;
+    let bestFit = { h: 0, v: 0, diff: Infinity };
+    
+    // Search for best fit by iterating through possible vertical cabinet counts
+    for (let v = 1; v < 40; v++) {
+        const h_ideal = v * (16 / 9) * (cabinetHeightCm / cabinetWidthCm);
+        
+        // Check two candidate h values (floor and ceil) for the current v
+        for (const h of [Math.floor(h_ideal), Math.ceil(h_ideal)]) {
+            if (h <= 0) continue;
+
+            const screenWidthCm = h * cabinetWidthCm;
+            const screenHeightCm = v * cabinetHeightCm;
+            const currentDiagonalCm = Math.sqrt(Math.pow(screenWidthCm, 2) + Math.pow(screenHeightCm, 2));
+            
+            const diff = Math.abs(currentDiagonalCm - targetDiagonalCm);
+
+            if (diff < bestFit.diff) {
+                bestFit = { h, v, diff };
+            }
+        }
+    }
+
+    if (bestFit.h > 0 && bestFit.v > 0) {
+        onConfigChange({
+            cabinetsHorizontal: bestFit.h,
+            cabinetsVertical: bestFit.v,
+        });
+    }
+  };
   
   const translatedVoltageOptions = React.useMemo(() => VOLTAGE_OPTIONS.map(option => ({
     label: t(option.key),
     value: option.value
   })), [t]);
+
+  const presetsToShow = config.displayType === 'sync' ? SYNC_PROCESSOR_PRESETS : ASYNC_PROCESSOR_PRESETS;
 
   return (
     <Card title={t('configuration')}>
@@ -82,6 +123,23 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfig
           value={config.cabinetsVertical.toString()}
           onChange={(e) => handleInputChange('cabinetsVertical', e.target.value)}
         />
+
+        {/* Screen Size Helper */}
+        <div className="sm:col-span-2 font-semibold text-brand-text-secondary text-sm mt-4 mb-[-8px]">{t('screenSizeHelper')}</div>
+        <div className="sm:col-span-2">
+            <p className="text-xs text-brand-text-secondary mb-2">{t('screenSizeHelperDescription')}</p>
+            <div className="flex flex-wrap gap-2">
+                {STANDARD_DIAGONAL_INCHES.map(inches => (
+                    <button 
+                      key={inches} 
+                      onClick={() => handleDiagonalPresetClick(inches)}
+                      className="bg-brand-primary border border-gray-600/80 text-brand-text-secondary text-xs font-semibold py-1 px-3 rounded-md hover:bg-brand-accent/20 hover:text-brand-accent transition-colors focus:outline-none focus:ring-2 focus:ring-brand-accent"
+                    >
+                        {inches}"
+                    </button>
+                ))}
+            </div>
+        </div>
         
         {/* Power */}
         <div className="sm:col-span-2 font-semibold text-brand-text-secondary text-sm mt-4 mb-[-8px]">{t('power')}</div>
@@ -101,6 +159,17 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfig
         {/* Video Processor */}
         <div className="sm:col-span-2 font-semibold text-brand-text-secondary text-sm mt-4 mb-[-8px]">{t('novastarProcessor')}</div>
         <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-brand-text-secondary mb-1">{t('displayType')}</label>
+            <Toggle
+                value={config.displayType}
+                onChange={(newValue) => onConfigChange({ displayType: newValue as 'sync' | 'async' })}
+                options={[
+                    { value: 'sync', label: t('synchronous') },
+                    { value: 'async', label: t('asynchronous') }
+                ]}
+            />
+        </div>
+        <div className="sm:col-span-2">
             <Input
               label={t('pixelsPerPort')}
               type="number"
@@ -109,13 +178,16 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfig
               helperText={t('pixelsPerPortHelper')}
             />
         </div>
-        <div className="sm:col-span-2 mt-2">
+        <div className="sm:col-span-2 mt-4">
+            <h3 className="font-semibold text-brand-text-secondary text-sm mb-2">
+                {config.displayType === 'sync' ? t('vxProSeries') : t('tbSeries')}
+            </h3>
             <ul className="space-y-2">
-                {PROCESSOR_PRESETS.map((preset) => (
+                {presetsToShow.map((preset) => (
                     <li key={preset.name} className="flex items-center justify-between bg-brand-primary p-2 rounded-md border border-gray-600/50">
                         <div>
                             <p className="font-semibold text-brand-text-primary text-sm">{t(preset.tKey)}</p>
-                            <p className="text-xs text-brand-text-secondary">{t('processorPresetDetails', { capacity: preset.capacity.toLocaleString(), ports: preset.ports })}</p>
+                            <p className="text-xs text-brand-text-secondary">{t('processorPresetDetailsWithInputs', { capacity: preset.capacity.toLocaleString(), ports: preset.ports, inputs: preset.inputs })}</p>
                         </div>
                         <button
                             onClick={() => handlePresetClick(preset)}
@@ -153,6 +225,7 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfig
           label={t('pricePerPlayer')}
           type="number"
           value={config.playerPrice.toString()}
+          // FIX: Corrected typo from 'pricePerPlayer' to 'playerPrice' to match ScreenConfig key.
           onChange={(e) => handleInputChange('playerPrice', e.target.value)}
         />
       </div>

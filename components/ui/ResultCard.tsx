@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ResultCardProps {
@@ -10,7 +9,7 @@ interface ResultCardProps {
 
 export const ResultCard: React.FC<ResultCardProps> = ({ icon, label, value, subValue }) => {
   return (
-    <div className="bg-brand-secondary p-4 rounded-lg shadow-lg flex items-start gap-4 transition-transform hover:scale-105">
+    <div className="bg-brand-secondary p-4 rounded-lg shadow-lg flex items-start gap-4 transition-transform hover:scale-105 result-card-print">
       <div className="flex-shrink-0 text-brand-accent bg-brand-accent/10 p-3 rounded-lg">
         {icon}
       </div>

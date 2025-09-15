@@ -10,6 +10,7 @@ const ASSETS_TO_CACHE = [
   './zh.ts',
   './components/CalculatorForm.tsx',
   './components/ResultsDisplay.tsx',
+  './components/ResultsGrid.tsx',
   './components/WiringDiagram.tsx',
   './components/LanguageSwitcher.tsx',
   './components/ui/Card.tsx',
@@ -34,6 +35,7 @@ const ASSETS_TO_CACHE = [
   './components/icons/TopRightIcon.tsx',
   './components/icons/BottomLeftIcon.tsx',
   './components/icons/BottomRightIcon.tsx',
+  './components/icons/DownloadIcon.tsx',
   './manifest.json',
   './icons/icon-192x192.svg',
   './icons/icon-512x512.svg'

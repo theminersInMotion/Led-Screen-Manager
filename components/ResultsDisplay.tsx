@@ -1,134 +1,171 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import type { CalculationResults, ScreenConfig } from '../types';
-import { ResultCard } from './ui/ResultCard';
-import { PixelIcon, RatioIcon, PowerIcon, BreakerIcon, CableIcon, DimensionIcon, ProcessorIcon, CabinetIcon, PriceIcon, PlayerIcon } from './icons';
+import { PrintIcon, DownloadIcon } from './icons';
 import { WiringDiagram } from './WiringDiagram';
-import { PROCESSOR_PRESETS } from '../constants';
 import { useI18n } from '../i18n';
+import { ResultsGrid } from './ResultsGrid';
+import { Toggle } from './ui/Toggle';
+
+// Declare types for CDN-loaded libraries
+declare global {
+    interface Window {
+        jspdf: any;
+        html2canvas: any;
+    }
+}
 
 interface ResultsDisplayProps {
   results: CalculationResults;
   config: ScreenConfig;
 }
 
+const PrintPortal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const mount = document.getElementById('print-mount-root');
+  return mount ? ReactDOM.createPortal(children, mount) : null;
+};
+
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config }) => {
   const { t } = useI18n();
-  const selectedProcessor = PROCESSOR_PRESETS.find(p => p.capacity === config.portCapacityPx && p.ports === config.processorPorts);
-  const processorName = selectedProcessor ? t(selectedProcessor.tKey) : t('customConfig');
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isSavingPdf, setIsSavingPdf] = useState(false);
+  const [paperSize, setPaperSize] = useState<'a4' | 'letter'>('a4');
+
+  const handlePrint = () => {
+    setIsPrinting(true);
+  };
   
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const handleSavePdf = () => {
+    if (!window.jspdf || !window.html2canvas) {
+      alert('PDF generation library is not loaded. Please check your connection and try again.');
+      return;
+    }
+    setIsSavingPdf(true);
   };
 
-  return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h2 className="text-2xl font-bold mb-4 text-brand-text-primary">{t('summary')}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Row 1: Screen Specs */}
-          <ResultCard
-            icon={<PixelIcon />}
-            label={t('totalResolution')}
-            value={`${results.totalWidthPx.toLocaleString()} x ${results.totalHeightPx.toLocaleString()} px`}
-            subValue={`${results.totalPixels.toLocaleString()} ${t('pixels')}`}
-          />
-          <ResultCard
-            icon={<CabinetIcon />}
-            label={t('totalCabinets')}
-            value={results.totalCabinets.toLocaleString()}
-            subValue={t('cabinetsLayout', {h: config.cabinetsHorizontal, v: config.cabinetsVertical})}
-          />
-          <ResultCard
-            icon={<DimensionIcon />}
-            label={t('totalScreenSize')}
-            value={`${results.totalWidthM.toFixed(2)}m x ${results.totalHeightM.toFixed(2)}m`}
-            subValue={`${results.totalWidthFt.toFixed(2)}' x ${results.totalHeightFt.toFixed(2)}' (${results.totalWidthIn.toFixed(0)}" x ${results.totalHeightIn.toFixed(0)}")`}
-          />
-          <ResultCard
-            icon={<RatioIcon />}
-            label={t('aspectRatio')}
-            value={results.aspectRatio}
-          />
+  // Effect for PDF Generation
+  useEffect(() => {
+    const portalRoot = document.getElementById('print-mount-root');
+    if (!portalRoot) return;
+
+    if (isSavingPdf) {
+      portalRoot.classList.add('pdf-capture-mode');
+      
+      const generatePdf = async () => {
+        // Wait a tick for DOM to update with the new class
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        try {
+          const { jsPDF } = window.jspdf;
+          const canvas = await window.html2canvas(portalRoot, { scale: 2 });
+          const imgData = canvas.toDataURL('image/png');
           
-          {/* Row 2: Infrastructure Totals */}
-          <ResultCard
-            icon={<PowerIcon />}
-            label={t('totalPowerDraw')}
-            value={`${results.totalPowerW.toLocaleString()} W`}
-            subValue={`${results.totalAmps.toFixed(2)} ${t('amps')}`}
-          />
-          <ResultCard
-            icon={<CableIcon />}
-            label={t('totalNovastarPorts')}
-            value={`${results.requiredPorts.toLocaleString()}`}
-          />
-          <ResultCard
-            icon={<ProcessorIcon />}
-            label={t('processorsNeeded')}
-            value={`${results.totalProcessors.toLocaleString()}`}
-            subValue={processorName}
-          />
+          const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: paperSize });
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const imgProps = pdf.getImageProperties(imgData);
+          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-          {/* Row 3: Cost Estimation (Conditional) */}
-          {results.grandTotalPrice > 0 && (
-            <>
-              <ResultCard
-                icon={<PriceIcon />}
-                label={t('totalCabinetCost')}
-                value={formatCurrency(results.totalCabinetPrice)}
-                subValue={config.cabinetPrice > 0 ? `${formatCurrency(config.cabinetPrice)} ${t('perCabinet')}` : undefined}
-              />
-              <ResultCard
-                icon={<PriceIcon />}
-                label={t('totalProcessorCost')}
-                value={formatCurrency(results.totalProcessorPrice)}
-                subValue={config.processorPrice > 0 ? `${results.totalProcessors} x ${formatCurrency(config.processorPrice)}` : undefined}
-              />
-              <ResultCard
-                icon={<PlayerIcon />}
-                label={t('totalPlayerCost')}
-                value={formatCurrency(results.totalPlayerPrice)}
-                subValue={config.playerPrice > 0 ? `${config.playerQuantity} x ${formatCurrency(config.playerPrice)}` : undefined}
-              />
-              <ResultCard
-                icon={<PriceIcon />}
-                label={t('grandTotal')}
-                value={formatCurrency(results.grandTotalPrice)}
-                subValue={t('grandTotalSub')}
-              />
-            </>
-          )}
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          pdf.save('led-screen-summary.pdf');
+        } catch(e) {
+            console.error("Error generating PDF", e);
+            alert("Sorry, there was an error generating the PDF.");
+        } finally {
+            portalRoot.classList.remove('pdf-capture-mode');
+            setIsSavingPdf(false);
+        }
+      };
+      generatePdf();
+    }
+    
+    return () => {
+        portalRoot.classList.remove('pdf-capture-mode');
+    };
+  }, [isSavingPdf, paperSize]);
 
-          {/* Row 4: Breaker Totals */}
-          {results.breakerResults.map(breaker => (
-            <ResultCard
-              key={`total-breaker-${breaker.amps}`}
-              icon={<BreakerIcon />}
-              label={t('totalBreakers', { amps: breaker.amps })}
-              value={breaker.count.toLocaleString()}
-              subValue={t('at80Capacity')}
-            />
-          ))}
+  // Effect for Browser Printing
+  useEffect(() => {
+    if (isPrinting) {
+      const handleAfterPrint = () => setIsPrinting(false);
+      window.addEventListener('afterprint', handleAfterPrint, { once: true });
+      
+      const printTimeout = setTimeout(() => window.print(), 50);
 
-          {/* Row 5: Unit Capacity */}
-          {results.cabinetsPerBreaker.map(breaker => (
-            <ResultCard
-              key={`cabinets-per-breaker-${breaker.amps}`}
-              icon={<BreakerIcon />}
-              label={t('cabinetsPerBreaker', { amps: breaker.amps })}
-              value={breaker.count.toLocaleString()}
-              subValue={t('at80Capacity')}
-            />
-          ))}
-          <ResultCard
-            icon={<CableIcon />}
-            label={t('cabinetsPerRJ45Port')}
-            value={`${results.cabinetsPerPort.toLocaleString()}`}
-            subValue={t('maxPerPort')}
-          />
+      return () => {
+        window.removeEventListener('afterprint', handleAfterPrint);
+        clearTimeout(printTimeout);
+      };
+    }
+  }, [isPrinting]);
+
+  // Effect to manage print-specific stylesheet for paper size
+  useEffect(() => {
+    const styleId = 'print-paper-size-style';
+    document.getElementById(styleId)?.remove();
+    
+    const styleEl = document.createElement('style');
+    styleEl.id = styleId;
+    styleEl.innerHTML = `@media print { @page { size: ${paperSize}; } }`;
+    document.head.appendChild(styleEl);
+
+    return () => {
+        document.getElementById(styleId)?.remove();
+    };
+  }, [paperSize]);
+
+  const showPortal = isPrinting || isSavingPdf;
+
+  return (
+    <div className="flex flex-col gap-8 results-display-root">
+      {showPortal && (
+        <PrintPortal>
+          <h1 style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '1rem', color: 'black'}}>
+            {t('appName')} - {t('summary')}
+          </h1>
+          <div className="print-container">
+            <ResultsGrid results={results} config={config} />
+          </div>
+        </PrintPortal>
+      )}
+
+      <div>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 no-print">
+            <h2 className="text-2xl font-bold text-brand-text-primary whitespace-nowrap">{t('summary')}</h2>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                <div>
+                  <label className="sr-only">{t('paperSize')}</label>
+                  <Toggle
+                    value={paperSize}
+                    onChange={(s) => setPaperSize(s as 'a4' | 'letter')}
+                    options={[ { value: 'a4', label: t('a4') }, { value: 'letter', label: t('letter') } ]}
+                  />
+                </div>
+                <button
+                  onClick={handleSavePdf}
+                  disabled={isSavingPdf}
+                  className="flex items-center gap-2 bg-brand-secondary hover:bg-gray-700 text-brand-text-primary font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                  aria-label={t('savePdf')}
+                >
+                  <DownloadIcon />
+                  {isSavingPdf ? 'Saving...' : t('savePdf')}
+                </button>
+                <button
+                  onClick={handlePrint}
+                  className="flex items-center gap-2 bg-brand-secondary hover:bg-gray-700 text-brand-text-primary font-bold py-2 px-4 rounded-lg transition-colors"
+                  aria-label={t('printSummary')}
+                >
+                  <PrintIcon />
+                  {t('print')}
+                </button>
+            </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 printable-section">
+          <ResultsGrid results={results} config={config} />
         </div>
       </div>
-      <WiringDiagram config={config} results={results} />
+      <div className="no-print">
+        <WiringDiagram config={config} results={results} />
+      </div>
     </div>
   );
 };
