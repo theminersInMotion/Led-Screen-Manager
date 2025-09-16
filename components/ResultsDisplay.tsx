@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import type { CalculationResults, ScreenConfig } from '../types';
 import { PrintIcon, DownloadIcon } from './icons';
-import { WiringDiagram } from './WiringDiagram';
+import { WiringDiagram, type DiagramState } from './WiringDiagram';
 import { useI18n } from '../i18n';
 import { ResultsGrid } from './ResultsGrid';
 import { Toggle } from './ui/Toggle';
@@ -30,6 +30,31 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
   const [isPrinting, setIsPrinting] = useState(false);
   const [isSavingPdf, setIsSavingPdf] = useState(false);
   const [paperSize, setPaperSize] = useState<'a4' | 'letter'>('a4');
+  const [diagramState, setDiagramState] = useState<DiagramState>({
+    startCorner: 'bottomLeft',
+    wiringPattern: 'vertical',
+    viewMode: 'data',
+    visibleDataPorts: {},
+    visiblePowerBreakers: {},
+  });
+
+  useEffect(() => {
+    const totalDataGroups = results.cabinetsPerPort > 0 ? Math.ceil(results.totalCabinets / results.cabinetsPerPort) : 0;
+    
+    const highestAmpsBreakerResult = [...results.cabinetsPerBreaker].sort((a, b) => b.amps - a.amps)[0];
+    const cabinetsPerPowerGroup = highestAmpsBreakerResult?.count || 0;
+    const totalPowerGroups = cabinetsPerPowerGroup > 0 ? Math.ceil(results.totalCabinets / cabinetsPerPowerGroup) : 0;
+
+    setDiagramState(prev => ({
+      ...prev,
+      visibleDataPorts: Object.fromEntries(Array.from({ length: totalDataGroups }, (_, i) => [i, true])),
+      visiblePowerBreakers: Object.fromEntries(Array.from({ length: totalPowerGroups }, (_, i) => [i, true]))
+    }));
+  }, [results.totalCabinets, results.cabinetsPerPort, results.cabinetsPerBreaker]);
+
+  const handleDiagramStateChange = (newState: Partial<DiagramState>) => {
+    setDiagramState(prevState => ({ ...prevState, ...newState }));
+  };
 
   const handlePrint = () => {
     setIsPrinting(true);
@@ -57,15 +82,39 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
         
         try {
           const { jsPDF } = window.jspdf;
-          const canvas = await window.html2canvas(portalRoot, { scale: 2 });
+          const canvas = await window.html2canvas(portalRoot, {
+            scale: 2,
+            windowWidth: portalRoot.scrollWidth,
+            windowHeight: portalRoot.scrollHeight,
+          });
           const imgData = canvas.toDataURL('image/png');
           
           const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: paperSize });
           const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          
           const imgProps = pdf.getImageProperties(imgData);
-          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+          const imgWidth = imgProps.width;
+          const imgHeight = imgProps.height;
 
-          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          const ratio = pdfWidth / imgWidth;
+          const scaledImgHeight = imgHeight * ratio;
+
+          let position = 0;
+          let remainingHeight = scaledImgHeight;
+
+          // Add the first page
+          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, scaledImgHeight);
+          remainingHeight -= pdfHeight;
+
+          // Add subsequent pages if the content overflows
+          while (remainingHeight > 0) {
+            position -= pdfHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, scaledImgHeight);
+            remainingHeight -= pdfHeight;
+          }
+
           pdf.save('led-screen-summary.pdf');
         } catch(e) {
             console.error("Error generating PDF", e);
@@ -81,7 +130,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
     return () => {
         portalRoot.classList.remove('pdf-capture-mode');
     };
-  }, [isSavingPdf, paperSize]);
+  }, [isSavingPdf, paperSize, diagramState]);
 
   // Effect for Browser Printing
   useEffect(() => {
@@ -125,6 +174,28 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
           <div className="print-container">
             <ResultsGrid results={results} config={config} />
           </div>
+          <div style={{ pageBreakBefore: 'always', paddingTop: '1rem' }}>
+            <h2 style={{fontSize: '20px', fontWeight: 'bold', marginBottom: '1rem', color: 'black'}}>
+                {t('dataWiringDiagram')}
+            </h2>
+            <WiringDiagram
+              config={config}
+              results={results}
+              isPrintMode={true}
+              diagramState={{ ...diagramState, viewMode: 'data' }}
+            />
+          </div>
+          <div style={{ pageBreakBefore: 'always', paddingTop: '1rem' }}>
+            <h2 style={{fontSize: '20px', fontWeight: 'bold', marginBottom: '1rem', color: 'black'}}>
+                {t('powerWiringDiagram')}
+            </h2>
+            <WiringDiagram
+              config={config}
+              results={results}
+              isPrintMode={true}
+              diagramState={{ ...diagramState, viewMode: 'power' }}
+            />
+          </div>
         </PrintPortal>
       )}
 
@@ -164,7 +235,12 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
         </div>
       </div>
       <div className="no-print">
-        <WiringDiagram config={config} results={results} />
+        <WiringDiagram 
+            config={config} 
+            results={results}
+            diagramState={diagramState}
+            onDiagramStateChange={handleDiagramStateChange}
+        />
       </div>
     </div>
   );

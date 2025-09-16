@@ -22,4 +22,4 @@ export const ASYNC_PROCESSOR_PRESETS: ProcessorPreset[] = [
   { name: 'Novastar TB50', tKey: 'proc_tb50', type: 'async', capacity: 650000, totalCapacity: 2300000, ports: 8, inputs: 'Wi-Fi, LAN, USB, HDMI In/Out' },
 ];
 
-export const STANDARD_DIAGONAL_INCHES = [32, 43, 55, 65, 75, 85, 98];
+export const STANDARD_DIAGONAL_INCHES = [85, 98, 110, 135, 165, 200];

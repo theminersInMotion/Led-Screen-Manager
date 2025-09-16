@@ -81,5 +81,9 @@ export const en = {
   "savePdf": "Save PDF",
   "paperSize": "Paper Size",
   "a4": "A4",
-  "letter": "Letter"
+  "letter": "Letter",
+  "dataWiringDiagram": "Data Wiring Diagram",
+  "powerWiringDiagram": "Power Wiring Diagram",
+  "diagramView": "Diagram View",
+  "powerView": "Power"
 };

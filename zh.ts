@@ -81,5 +81,9 @@ export const zh = {
   "savePdf": "保存PDF",
   "paperSize": "纸张尺寸",
   "a4": "A4",
-  "letter": "Letter"
+  "letter": "Letter",
+  "dataWiringDiagram": "数据接线图",
+  "powerWiringDiagram": "电源接线图",
+  "diagramView": "图表视图",
+  "powerView": "电源"
 };
