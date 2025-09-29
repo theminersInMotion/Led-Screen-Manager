@@ -31,8 +31,10 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
   const [isSavingPdf, setIsSavingPdf] = useState(false);
   const [paperSize, setPaperSize] = useState<'a4' | 'letter'>('a4');
   const [diagramState, setDiagramState] = useState<DiagramState>({
-    startCorner: 'bottomLeft',
-    wiringPattern: 'vertical',
+    dataStartCorner: 'bottomLeft',
+    dataWiringPattern: 'vertical',
+    powerStartCorner: 'bottomLeft',
+    powerWiringPattern: 'vertical',
     viewMode: 'data',
     visibleDataPorts: {},
     visiblePowerBreakers: {},

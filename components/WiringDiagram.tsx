@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import type { ScreenConfig, CalculationResults } from '../types';
 import { Card } from './ui/Card';
 import { Toggle } from './ui/Toggle';
@@ -9,8 +9,10 @@ export type StartCorner = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
 export type WiringPattern = 'horizontal' | 'vertical';
 
 export interface DiagramState {
-  startCorner: StartCorner;
-  wiringPattern: WiringPattern;
+  dataStartCorner: StartCorner;
+  dataWiringPattern: WiringPattern;
+  powerStartCorner: StartCorner;
+  powerWiringPattern: WiringPattern;
   viewMode: 'data' | 'power';
   visibleDataPorts: Record<number, boolean>;
   visiblePowerBreakers: Record<number, boolean>;
@@ -27,20 +29,7 @@ interface WiringDiagramProps {
 const DATA_COLORS = ['#00bfff', '#1e90ff', '#5352ed', '#007bff', '#4d7cff', '#005cbf', '#00bfff', '#1e90ff', '#5352ed', '#007bff'];
 const POWER_COLORS = ['#ff4757', '#ffa502', '#feca57', '#ff6b81', '#ff9f43', '#e67e22', '#ff4757', '#ffa502', '#feca57', '#ff6b81'];
 
-export const WiringDiagram: React.FC<WiringDiagramProps> = ({ 
-  config, 
-  results,
-  isPrintMode = false,
-  diagramState,
-  onDiagramStateChange
-}) => {
-  const { startCorner, wiringPattern, viewMode, visibleDataPorts, visiblePowerBreakers } = diagramState;
-  const { t } = useI18n();
-
-  const { cabinetsHorizontal, cabinetsVertical } = config;
-  const totalCabinets = cabinetsHorizontal * cabinetsVertical;
-
-  const serpentinePath = useMemo(() => {
+const calculateSerpentinePath = (startCorner: StartCorner, wiringPattern: WiringPattern, cabinetsVertical: number, cabinetsHorizontal: number) => {
     const path: { row: number, col: number }[] = [];
     if (cabinetsHorizontal <= 0 || cabinetsVertical <= 0) return path;
 
@@ -74,16 +63,24 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
       });
     }
     return path;
-  }, [cabinetsHorizontal, cabinetsVertical, startCorner, wiringPattern]);
+}
 
-  const createGrouping = (cabinetsPerGroup: number) => {
+const useGrouping = (
+    cabinetsPerGroup: number,
+    wiringPattern: WiringPattern,
+    startCorner: StartCorner,
+    serpentinePath: { row: number, col: number }[],
+    cabinetsVertical: number,
+    cabinetsHorizontal: number,
+    totalCabinets: number,
+) => {
     const groupingStrategy = useMemo(() => {
       if (wiringPattern === 'vertical' && cabinetsVertical > 0) return cabinetsPerGroup >= cabinetsVertical ? 'rectangular' : 'contiguous';
       if (wiringPattern === 'horizontal' && cabinetsHorizontal > 0) return cabinetsPerGroup >= cabinetsHorizontal ? 'rectangular' : 'contiguous';
       return 'contiguous';
-    }, [cabinetsPerGroup]);
+    }, [cabinetsPerGroup, wiringPattern, cabinetsVertical, cabinetsHorizontal]);
 
-    const getGroupIndex = (r: number, c: number): number => {
+    const getGroupIndex = useCallback((r: number, c: number): number => {
       if (cabinetsPerGroup <= 0) return -1;
       if (groupingStrategy === 'rectangular') {
         if (wiringPattern === 'vertical') {
@@ -105,7 +102,7 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
         const cabinetIndex = serpentinePath.findIndex(p => p.row === r && p.col === c);
         return cabinetIndex !== -1 ? Math.floor(cabinetIndex / cabinetsPerGroup) : -1;
       }
-    };
+    }, [groupingStrategy, cabinetsPerGroup, wiringPattern, startCorner, serpentinePath, cabinetsVertical, cabinetsHorizontal]);
     
     const totalGroups = useMemo(() => {
         if (cabinetsPerGroup <= 0 || totalCabinets === 0) return 0;
@@ -116,14 +113,84 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
         const groupIndex = getGroupIndex(cabinet.row, cabinet.col);
         if (groupIndex !== -1 && !acc[groupIndex]) acc[groupIndex] = cabinet;
         return acc;
-    }, {} as Record<number, {row: number, col: number}>), [serpentinePath]);
+    }, {} as Record<number, {row: number, col: number}>), [serpentinePath, getGroupIndex]);
 
     return { getGroupIndex, totalGroups, groupStartCabinets };
-  };
+}
+
+export const WiringDiagram: React.FC<WiringDiagramProps> = ({ 
+  config, 
+  results,
+  isPrintMode = false,
+  diagramState,
+  onDiagramStateChange
+}) => {
+  const { 
+    dataStartCorner, dataWiringPattern,
+    powerStartCorner, powerWiringPattern,
+    viewMode, visibleDataPorts, visiblePowerBreakers
+  } = diagramState;
+  const { t } = useI18n();
+
+  const { cabinetsHorizontal, cabinetsVertical } = config;
+  const totalCabinets = cabinetsHorizontal * cabinetsVertical;
   
-  const { getGroupIndex: getDataGroupIndex, totalGroups: totalDataGroups, groupStartCabinets: dataGroupStartCabinets } = createGrouping(results.cabinetsPerPort);
+  const dataSerpentinePath = useMemo(() => {
+      return calculateSerpentinePath(dataStartCorner, dataWiringPattern, cabinetsVertical, cabinetsHorizontal);
+  }, [cabinetsHorizontal, cabinetsVertical, dataStartCorner, dataWiringPattern]);
+
+  const powerSerpentinePath = useMemo(() => {
+      return calculateSerpentinePath(powerStartCorner, powerWiringPattern, cabinetsVertical, cabinetsHorizontal);
+  }, [cabinetsHorizontal, cabinetsVertical, powerStartCorner, powerWiringPattern]);
+
   const highestAmpsBreakerResult = useMemo(() => [...results.cabinetsPerBreaker].sort((a, b) => b.amps - a.amps)[0], [results.cabinetsPerBreaker]);
-  const { getGroupIndex: getPowerGroupIndex, totalGroups: totalPowerGroups, groupStartCabinets: powerGroupStartCabinets } = createGrouping(highestAmpsBreakerResult?.count || 0);
+  
+  const { getGroupIndex: getDataGroupIndex, totalGroups: totalDataGroups } = useGrouping(results.cabinetsPerPort, dataWiringPattern, dataStartCorner, dataSerpentinePath, cabinetsVertical, cabinetsHorizontal, totalCabinets);
+  const { getGroupIndex: getPowerGroupIndex, totalGroups: totalPowerGroups, groupStartCabinets: powerGroupStartCabinets } = useGrouping(highestAmpsBreakerResult?.count || 0, powerWiringPattern, powerStartCorner, powerSerpentinePath, cabinetsVertical, cabinetsHorizontal, totalCabinets);
+
+
+  const dataGroupLabelCabinets = useMemo(() => {
+    if (totalDataGroups === 0) return {};
+
+    const groups: Record<number, { row: number, col: number }[]> = {};
+    for (let r = 0; r < cabinetsVertical; r++) {
+        for (let c = 0; c < cabinetsHorizontal; c++) {
+            const groupIndex = getDataGroupIndex(r, c);
+            if (groupIndex !== -1) {
+                if (!groups[groupIndex]) {
+                    groups[groupIndex] = [];
+                }
+                groups[groupIndex].push({ row: r, col: c });
+            }
+        }
+    }
+
+    const labelCabinets: Record<number, { row: number, col: number }> = {};
+    for (const groupIndexStr in groups) {
+        const groupIndex = parseInt(groupIndexStr, 10);
+        const cabinetsInGroup = groups[groupIndex];
+        if (!cabinetsInGroup || cabinetsInGroup.length === 0) continue;
+
+        let bestCabinet = cabinetsInGroup[0];
+        let minDistance = Infinity;
+
+        for (const cabinet of cabinetsInGroup) {
+            const distance = Math.min(
+                cabinet.row,
+                cabinet.col,
+                (cabinetsVertical - 1) - cabinet.row,
+                (cabinetsHorizontal - 1) - cabinet.col
+            );
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                bestCabinet = cabinet;
+            }
+        }
+        labelCabinets[groupIndex] = bestCabinet;
+    }
+    return labelCabinets;
+  }, [cabinetsHorizontal, cabinetsVertical, getDataGroupIndex, totalDataGroups]);
 
   const handleToggleVisibility = (type: 'data' | 'power', index: number) => {
     if (!onDiagramStateChange) return;
@@ -150,11 +217,19 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
                 <div>
                     <label className="block text-sm font-medium text-brand-text-secondary mb-2">{t('wiringPattern')}</label>
-                    <Toggle value={wiringPattern} onChange={(p) => onDiagramStateChange({ wiringPattern: p as WiringPattern })} options={[{ value: 'vertical', label: t('vertical') }, { value: 'horizontal', label: t('horizontal') }]} />
+                    <Toggle 
+                        value={viewMode === 'data' ? dataWiringPattern : powerWiringPattern} 
+                        onChange={(p) => onDiagramStateChange(viewMode === 'data' ? { dataWiringPattern: p as WiringPattern } : { powerWiringPattern: p as WiringPattern })} 
+                        options={[{ value: 'vertical', label: t('vertical') }, { value: 'horizontal', label: t('horizontal') }]} 
+                    />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-brand-text-secondary mb-2">{t('startCorner')}</label>
-                    <Toggle value={startCorner} onChange={(c) => onDiagramStateChange({ startCorner: c as StartCorner })} options={[{ value: 'topLeft', label: <TopLeftIcon /> }, { value: 'topRight', label: <TopRightIcon /> }, { value: 'bottomLeft', label: <BottomLeftIcon /> }, { value: 'bottomRight', label: <BottomRightIcon /> }]} />
+                    <Toggle 
+                        value={viewMode === 'data' ? dataStartCorner : powerStartCorner} 
+                        onChange={(c) => onDiagramStateChange(viewMode === 'data' ? { dataStartCorner: c as StartCorner } : { powerStartCorner: c as StartCorner })} 
+                        options={[{ value: 'topLeft', label: <TopLeftIcon /> }, { value: 'topRight', label: <TopRightIcon /> }, { value: 'bottomLeft', label: <BottomLeftIcon /> }, { value: 'bottomRight', label: <BottomRightIcon /> }]} 
+                    />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-brand-text-secondary mb-2">{t('diagramView')}</label>
@@ -198,24 +273,24 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
             <g>
               {Array.from({ length: cabinetsVertical }).map((_, r) => Array.from({ length: cabinetsHorizontal }).map((_, c) => <rect key={`${r}-${c}`} x={getCoords(r,c).x} y={getCoords(r,c).y} width={cabinetSize} height={cabinetSize} fill="#1a1a1a" stroke="#4a4a4a" strokeWidth="2" rx="2" />))}
               
-              {viewMode === 'power' && serpentinePath.slice(0, -1).map((p, i) => {
+              {viewMode === 'power' && powerSerpentinePath.slice(0, -1).map((p, i) => {
                 const powerGroupIndex = getPowerGroupIndex(p.row, p.col);
-                if (powerGroupIndex !== -1 && visiblePowerBreakers[powerGroupIndex] && powerGroupIndex === getPowerGroupIndex(serpentinePath[i + 1].row, serpentinePath[i + 1].col)) {
-                    const { x: x1, y: y1 } = getCoords(p.row, p.col); const { x: x2, y: y2 } = getCoords(serpentinePath[i + 1].row, serpentinePath[i + 1].col);
+                if (powerGroupIndex !== -1 && visiblePowerBreakers[powerGroupIndex] && powerGroupIndex === getPowerGroupIndex(powerSerpentinePath[i + 1].row, powerSerpentinePath[i + 1].col)) {
+                    const { x: x1, y: y1 } = getCoords(p.row, p.col); const { x: x2, y: y2 } = getCoords(powerSerpentinePath[i + 1].row, powerSerpentinePath[i + 1].col);
                     return <line key={`power-line-${i}`} x1={x1 + cabinetSize / 2} y1={y1 + cabinetSize / 2} x2={x2 + cabinetSize / 2} y2={y2 + cabinetSize / 2} stroke={POWER_COLORS[powerGroupIndex % POWER_COLORS.length]} strokeWidth="1.5" strokeLinecap="round" strokeDasharray="4 2" />;
                 } return null;
               })}
 
-              {viewMode === 'data' && serpentinePath.slice(0, -1).map((p, i) => {
+              {viewMode === 'data' && dataSerpentinePath.slice(0, -1).map((p, i) => {
                 const dataGroupIndex = getDataGroupIndex(p.row, p.col);
-                if (dataGroupIndex !== -1 && visibleDataPorts[dataGroupIndex] && dataGroupIndex === getDataGroupIndex(serpentinePath[i + 1].row, serpentinePath[i + 1].col)) {
-                    const { x: x1, y: y1 } = getCoords(p.row, p.col); const { x: x2, y: y2 } = getCoords(serpentinePath[i + 1].row, serpentinePath[i + 1].col);
+                if (dataGroupIndex !== -1 && visibleDataPorts[dataGroupIndex] && dataGroupIndex === getDataGroupIndex(dataSerpentinePath[i + 1].row, dataSerpentinePath[i + 1].col)) {
+                    const { x: x1, y: y1 } = getCoords(p.row, p.col); const { x: x2, y: y2 } = getCoords(dataSerpentinePath[i + 1].row, dataSerpentinePath[i + 1].col);
                     return <line key={`data-line-${i}`} x1={x1 + cabinetSize / 2} y1={y1 + cabinetSize / 2} x2={x2 + cabinetSize / 2} y2={y2 + cabinetSize / 2} stroke={DATA_COLORS[dataGroupIndex % DATA_COLORS.length]} strokeWidth="1.5" strokeLinecap="round" />;
                 } return null;
               })}
 
               {viewMode === 'power' && Object.entries(powerGroupStartCabinets).map(([idx, cab]) => { const i = parseInt(idx); if(visiblePowerBreakers[i]) { const {x, y} = getCoords(cab.row, cab.col); return <g key={`power-label-${i}`}><rect x={x+4} y={y+4} width={cabinetSize-8} height={cabinetSize-8} rx="2" fill={POWER_COLORS[i % POWER_COLORS.length]} /><text x={x + cabinetSize/2} y={y + cabinetSize/2} textAnchor="middle" dy=".3em" fill="#0a0a0a" fontSize="9" fontWeight="bold">B{i + 1}</text></g> } return null; })}
-              {viewMode === 'data' && Object.entries(dataGroupStartCabinets).map(([idx, cab]) => { const i = parseInt(idx); if(visibleDataPorts[i]) { const {x, y} = getCoords(cab.row, cab.col); return <g key={`data-label-${i}`}><circle cx={x + cabinetSize/2} cy={y + cabinetSize/2} r={cabinetSize/3} fill={DATA_COLORS[i % DATA_COLORS.length]} /><text x={x + cabinetSize/2} y={y + cabinetSize/2} textAnchor="middle" dy=".3em" fill="#0a0a0a" fontSize="10" fontWeight="bold">P{i + 1}</text></g> } return null; })}
+              {viewMode === 'data' && Object.entries(dataGroupLabelCabinets).map(([idx, cab]) => { const i = parseInt(idx); if(visibleDataPorts[i] && cab) { const {x, y} = getCoords(cab.row, cab.col); return <g key={`data-label-${i}`}><circle cx={x + cabinetSize/2} cy={y + cabinetSize/2} r={cabinetSize/3} fill={DATA_COLORS[i % DATA_COLORS.length]} /><text x={x + cabinetSize/2} y={y + cabinetSize/2} textAnchor="middle" dy=".3em" fill="#0a0a0a" fontSize="10" fontWeight="bold">P{i + 1}</text></g> } return null; })}
             </g>
           </svg>
         </div>
