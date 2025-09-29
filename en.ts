@@ -85,5 +85,12 @@ export const en = {
   "dataWiringDiagram": "Data Wiring Diagram",
   "powerWiringDiagram": "Power Wiring Diagram",
   "diagramView": "Diagram View",
-  "powerView": "Power"
+  "powerView": "Power",
+  "wiringMode": "Wiring Mode",
+  "autoMode": "Automatic",
+  "manualMode": "Manual",
+  "selectPathToDraw": "Select a circuit/port to start drawing its path.",
+  "clearAllPaths": "Clear All Paths",
+  "pathCapacity": "{count}/{limit}",
+  "pathComplete": "Full"
 };

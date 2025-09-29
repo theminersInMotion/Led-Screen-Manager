@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import type { ScreenConfig, CalculationResults } from '../types';
 import { Card } from './ui/Card';
 import { Toggle } from './ui/Toggle';
@@ -25,6 +25,12 @@ interface WiringDiagramProps {
   diagramState: DiagramState;
   onDiagramStateChange?: (newState: Partial<DiagramState>) => void;
 }
+
+interface Path {
+  id: number;
+  cabinets: { row: number, col: number }[];
+}
+
 
 const DATA_COLORS = ['#00bfff', '#1e90ff', '#5352ed', '#007bff', '#4d7cff', '#005cbf', '#00bfff', '#1e90ff', '#5352ed', '#007bff'];
 const POWER_COLORS = ['#ff4757', '#ffa502', '#feca57', '#ff6b81', '#ff9f43', '#e67e22', '#ff4757', '#ffa502', '#feca57', '#ff6b81'];
@@ -132,9 +138,28 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
   } = diagramState;
   const { t } = useI18n();
 
+  const [wiringMode, setWiringMode] = useState<'auto' | 'manual'>('auto');
+  const [manualDataPaths, setManualDataPaths] = useState<Path[]>([]);
+  const [manualPowerPaths, setManualPowerPaths] = useState<Path[]>([]);
+  const [activePathId, setActivePathId] = useState<number | null>(null);
+
+  const effectiveWiringMode = isPrintMode ? 'auto' : wiringMode;
+
   const { cabinetsHorizontal, cabinetsVertical } = config;
   const totalCabinets = cabinetsHorizontal * cabinetsVertical;
   
+  // Clear manual paths if cabinet layout changes
+  useEffect(() => {
+    setManualDataPaths([]);
+    setManualPowerPaths([]);
+    setActivePathId(null);
+  }, [cabinetsHorizontal, cabinetsVertical]);
+
+  // Reset active path when switching view mode
+  useEffect(() => {
+    setActivePathId(null);
+  }, [viewMode]);
+
   const dataSerpentinePath = useMemo(() => {
       return calculateSerpentinePath(dataStartCorner, dataWiringPattern, cabinetsVertical, cabinetsHorizontal);
   }, [cabinetsHorizontal, cabinetsVertical, dataStartCorner, dataWiringPattern]);
@@ -203,12 +228,56 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
     }
   };
 
+  const handleCabinetClick = (row: number, col: number) => {
+    if (wiringMode !== 'manual' || activePathId === null) return;
+
+    const isData = viewMode === 'data';
+    const paths = isData ? manualDataPaths : manualPowerPaths;
+    const setPaths = isData ? setManualDataPaths : setManualPowerPaths;
+    const limit = isData ? results.cabinetsPerPort : (highestAmpsBreakerResult?.count || 0);
+
+    const activePath = paths.find(p => p.id === activePathId);
+    if (activePath) {
+      const lastCabinet = activePath.cabinets[activePath.cabinets.length - 1];
+      if (lastCabinet && lastCabinet.row === row && lastCabinet.col === col) {
+        const updatedPath = { ...activePath, cabinets: activePath.cabinets.slice(0, -1) };
+        setPaths(paths.map(p => p.id === activePathId ? updatedPath : p).filter(p => p.cabinets.length > 0));
+        return;
+      }
+    }
+
+    const isUsed = paths.some(p => p.cabinets.some(c => c.row === row && c.col === col));
+    if (isUsed) return;
+
+    let currentPath = paths.find(p => p.id === activePathId) || { id: activePathId, cabinets: [] };
+
+    if (currentPath.cabinets.length >= limit) return;
+
+    if (currentPath.cabinets.length > 0) {
+      const lastCabinet = currentPath.cabinets[currentPath.cabinets.length - 1];
+      const isAdjacent = (Math.abs(lastCabinet.row - row) === 1 && lastCabinet.col === col) || (Math.abs(lastCabinet.col - col) === 1 && lastCabinet.row === row);
+      if (!isAdjacent) return;
+    }
+
+    const updatedPath = { ...currentPath, cabinets: [...currentPath.cabinets, { row, col }] };
+    setPaths([...paths.filter(p => p.id !== activePathId), updatedPath].sort((a, b) => a.id - b.id));
+  };
+  
+  const handleClearAllPaths = () => {
+    if(viewMode === 'data') setManualDataPaths([]); else setManualPowerPaths([]);
+    setActivePathId(null);
+  };
+
   const cabinetSize = 32;
   const gap = 6;
   const cabinetAndGap = cabinetSize + gap;
   const totalWidth = cabinetsHorizontal * cabinetAndGap - gap;
   const totalHeight = cabinetsVertical * cabinetAndGap - gap;
   const getCoords = (row: number, col: number) => ({ x: col * cabinetAndGap, y: row * cabinetAndGap });
+  
+  const currentManualPaths = viewMode === 'data' ? manualDataPaths : manualPowerPaths;
+  const currentTotalGroups = viewMode === 'data' ? totalDataGroups : totalPowerGroups;
+  const capacityLimit = viewMode === 'data' ? results.cabinetsPerPort : (highestAmpsBreakerResult?.count || 0);
 
   const diagramContent = (
     <div className="flex flex-col gap-4">
@@ -216,6 +285,26 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
         <div className="flex flex-col gap-6 bg-brand-primary p-4 rounded-md border border-gray-800">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
                 <div>
+                    <label className="block text-sm font-medium text-brand-text-secondary mb-2">{t('diagramView')}</label>
+                    <Toggle 
+                        value={viewMode} 
+                        onChange={(v) => onDiagramStateChange({ viewMode: v as 'data' | 'power' })} 
+                        options={[{ value: 'data', label: t('data') }, { value: 'power', label: t('powerView') }]} 
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-brand-text-secondary mb-2">{t('wiringMode')}</label>
+                    <Toggle 
+                        value={wiringMode} 
+                        onChange={(v) => setWiringMode(v as 'auto' | 'manual')} 
+                        options={[{ value: 'auto', label: t('autoMode') }, { value: 'manual', label: t('manualMode') }]} 
+                    />
+                </div>
+            </div>
+
+            {wiringMode === 'auto' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                 <div>
                     <label className="block text-sm font-medium text-brand-text-secondary mb-2">{t('wiringPattern')}</label>
                     <Toggle 
                         value={viewMode === 'data' ? dataWiringPattern : powerWiringPattern} 
@@ -231,25 +320,46 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
                         options={[{ value: 'topLeft', label: <TopLeftIcon /> }, { value: 'topRight', label: <TopRightIcon /> }, { value: 'bottomLeft', label: <BottomLeftIcon /> }, { value: 'bottomRight', label: <BottomRightIcon /> }]} 
                     />
                 </div>
-                 <div>
-                    <label className="block text-sm font-medium text-brand-text-secondary mb-2">{t('diagramView')}</label>
-                    <Toggle 
-                        value={viewMode} 
-                        onChange={(v) => onDiagramStateChange({ viewMode: v as 'data' | 'power' })} 
-                        options={[
-                            { value: 'data', label: t('data') }, 
-                            { value: 'power', label: t('powerView') }
-                        ]} 
-                    />
-                </div>
-            </div>
+              </div>
+            )}
             
-            {viewMode === 'data' && totalDataGroups > 0 && <div>
+            {wiringMode === 'manual' && currentTotalGroups > 0 && (
+              <div className="border-t border-gray-700 pt-4">
+                <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium text-brand-text-secondary">{t('selectPathToDraw')}</label>
+                    <button onClick={handleClearAllPaths} className="text-xs text-brand-accent hover:underline">{t('clearAllPaths')}</button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {Array.from({ length: currentTotalGroups }).map((_, i) => {
+                    const path = currentManualPaths.find(p => p.id === i);
+                    const count = path?.cabinets.length || 0;
+                    const isFull = count >= capacityLimit;
+                    const isActive = activePathId === i;
+                    const prefix = viewMode === 'data' ? 'P' : 'B';
+
+                    return (
+                      <button 
+                        key={`${viewMode}-path-btn-${i}`} 
+                        onClick={() => setActivePathId(i)}
+                        className={`flex flex-col items-center justify-center p-2 rounded-md transition-all border ${isActive ? 'bg-brand-accent/20 border-brand-accent' : 'bg-brand-primary border-gray-600 hover:border-gray-500'}`}
+                      >
+                        <span className={`font-bold text-sm ${isActive ? 'text-brand-accent' : 'text-brand-text-primary'}`}>{prefix}{i+1}</span>
+                        <span className={`text-xs ${isFull ? 'text-yellow-400' : 'text-brand-text-secondary'}`}>
+                          {isFull ? t('pathComplete') : t('pathCapacity', { count, limit: capacityLimit })}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {wiringMode === 'auto' && viewMode === 'data' && totalDataGroups > 0 && <div>
                 <label className="block text-sm font-medium text-brand-text-secondary mb-2">Data Ports</label>
                 <div className="flex flex-wrap gap-2">{Array.from({ length: totalDataGroups }).map((_, i) => <button key={`data-toggle-${i}`} onClick={() => handleToggleVisibility('data', i)} className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${visibleDataPorts[i] ? 'text-white' : 'text-gray-500 bg-transparent'}`} style={{ backgroundColor: visibleDataPorts[i] ? DATA_COLORS[i % DATA_COLORS.length] : '#2a2a2a' }}>P{i + 1}</button>)}</div>
             </div>}
             
-            {viewMode === 'power' && totalPowerGroups > 0 && <div>
+            {wiringMode === 'auto' && viewMode === 'power' && totalPowerGroups > 0 && <div>
                 <label className="block text-sm font-medium text-brand-text-secondary mb-2">Power Circuits ({highestAmpsBreakerResult?.amps}A)</label>
                 <div className="flex flex-wrap gap-2">{Array.from({ length: totalPowerGroups }).map((_, i) => <button key={`power-toggle-${i}`} onClick={() => handleToggleVisibility('power', i)} className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${visiblePowerBreakers[i] ? 'text-white' : 'text-gray-500 bg-transparent'}`} style={{ backgroundColor: visiblePowerBreakers[i] ? POWER_COLORS[i % POWER_COLORS.length] : '#2a2a2a' }}>B{i + 1}</button>)}</div>
             </div>}
@@ -271,9 +381,28 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
         <div className="w-full bg-brand-primary p-4 rounded-md overflow-x-auto">
           <svg viewBox={`-16 -16 ${totalWidth + 32} ${totalHeight + 32}`} width="100%" height="100%" style={{ minWidth: Math.max(300, totalWidth / 2), minHeight: Math.max(200, totalHeight / 2) }} aria-label="Wiring diagram">
             <g>
-              {Array.from({ length: cabinetsVertical }).map((_, r) => Array.from({ length: cabinetsHorizontal }).map((_, c) => <rect key={`${r}-${c}`} x={getCoords(r,c).x} y={getCoords(r,c).y} width={cabinetSize} height={cabinetSize} fill="#1a1a1a" stroke="#4a4a4a" strokeWidth="2" rx="2" />))}
+              {Array.from({ length: cabinetsVertical }).map((_, r) => Array.from({ length: cabinetsHorizontal }).map((_, c) => {
+                const isManualUsed = effectiveWiringMode === 'manual' && currentManualPaths.some(p => p.cabinets.some(cab => cab.row === r && cab.col === c));
+                const isManualActivePath = effectiveWiringMode === 'manual' && activePathId !== null && currentManualPaths.find(p => p.id === activePathId)?.cabinets.some(cab => cab.row === r && cab.col === c);
+
+                return (
+                  <rect 
+                    key={`${r}-${c}`} 
+                    x={getCoords(r,c).x} 
+                    y={getCoords(r,c).y} 
+                    width={cabinetSize} 
+                    height={cabinetSize} 
+                    fill={isManualUsed ? '#111' : '#1a1a1a'} 
+                    stroke={isManualActivePath ? '#00bfff' : '#4a4a4a'}
+                    strokeWidth="2" 
+                    rx="2"
+                    onClick={() => handleCabinetClick(r, c)}
+                    className={effectiveWiringMode === 'manual' ? 'cursor-pointer' : ''}
+                  />
+                );
+              }))}
               
-              {viewMode === 'power' && powerSerpentinePath.slice(0, -1).map((p, i) => {
+              {effectiveWiringMode === 'auto' && viewMode === 'power' && powerSerpentinePath.slice(0, -1).map((p, i) => {
                 const powerGroupIndex = getPowerGroupIndex(p.row, p.col);
                 if (powerGroupIndex !== -1 && visiblePowerBreakers[powerGroupIndex] && powerGroupIndex === getPowerGroupIndex(powerSerpentinePath[i + 1].row, powerSerpentinePath[i + 1].col)) {
                     const { x: x1, y: y1 } = getCoords(p.row, p.col); const { x: x2, y: y2 } = getCoords(powerSerpentinePath[i + 1].row, powerSerpentinePath[i + 1].col);
@@ -281,7 +410,7 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
                 } return null;
               })}
 
-              {viewMode === 'data' && dataSerpentinePath.slice(0, -1).map((p, i) => {
+              {effectiveWiringMode === 'auto' && viewMode === 'data' && dataSerpentinePath.slice(0, -1).map((p, i) => {
                 const dataGroupIndex = getDataGroupIndex(p.row, p.col);
                 if (dataGroupIndex !== -1 && visibleDataPorts[dataGroupIndex] && dataGroupIndex === getDataGroupIndex(dataSerpentinePath[i + 1].row, dataSerpentinePath[i + 1].col)) {
                     const { x: x1, y: y1 } = getCoords(p.row, p.col); const { x: x2, y: y2 } = getCoords(dataSerpentinePath[i + 1].row, dataSerpentinePath[i + 1].col);
@@ -289,8 +418,40 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
                 } return null;
               })}
 
-              {viewMode === 'power' && Object.entries(powerGroupStartCabinets).map(([idx, cab]) => { const i = parseInt(idx); if(visiblePowerBreakers[i]) { const {x, y} = getCoords(cab.row, cab.col); return <g key={`power-label-${i}`}><rect x={x+4} y={y+4} width={cabinetSize-8} height={cabinetSize-8} rx="2" fill={POWER_COLORS[i % POWER_COLORS.length]} /><text x={x + cabinetSize/2} y={y + cabinetSize/2} textAnchor="middle" dy=".3em" fill="#0a0a0a" fontSize="9" fontWeight="bold">B{i + 1}</text></g> } return null; })}
-              {viewMode === 'data' && Object.entries(dataGroupLabelCabinets).map(([idx, cab]) => { const i = parseInt(idx); if(visibleDataPorts[i] && cab) { const {x, y} = getCoords(cab.row, cab.col); return <g key={`data-label-${i}`}><circle cx={x + cabinetSize/2} cy={y + cabinetSize/2} r={cabinetSize/3} fill={DATA_COLORS[i % DATA_COLORS.length]} /><text x={x + cabinetSize/2} y={y + cabinetSize/2} textAnchor="middle" dy=".3em" fill="#0a0a0a" fontSize="10" fontWeight="bold">P{i + 1}</text></g> } return null; })}
+              {effectiveWiringMode === 'manual' && currentManualPaths.map(path => {
+                const color = viewMode === 'data' ? DATA_COLORS[path.id % DATA_COLORS.length] : POWER_COLORS[path.id % POWER_COLORS.length];
+                return path.cabinets.slice(0, -1).map((cab, i) => {
+                  const nextCab = path.cabinets[i + 1];
+                  const { x: x1, y: y1 } = getCoords(cab.row, cab.col);
+                  const { x: x2, y: y2 } = getCoords(nextCab.row, nextCab.col);
+                  return (
+                    <line key={`manual-line-${path.id}-${i}`} x1={x1 + cabinetSize / 2} y1={y1 + cabinetSize / 2} x2={x2 + cabinetSize / 2} y2={y2 + cabinetSize / 2} stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeDasharray={viewMode === 'power' ? '4 2' : undefined} />
+                  );
+                });
+              })}
+
+              {/* FIX: Cast `cab` to `any` because TypeScript infers its type as `unknown` from Object.entries, causing a compilation error. */}
+              {effectiveWiringMode === 'auto' && viewMode === 'power' && Object.entries(powerGroupStartCabinets).map(([idx, cab]) => { const i = parseInt(idx); if(visiblePowerBreakers[i]) { const {x, y} = getCoords((cab as any).row, (cab as any).col); return <g key={`power-label-${i}`}><rect x={x+4} y={y+4} width={cabinetSize-8} height={cabinetSize-8} rx="2" fill={POWER_COLORS[i % POWER_COLORS.length]} /><text x={x + cabinetSize/2} y={y + cabinetSize/2} textAnchor="middle" dy=".3em" fill="#0a0a0a" fontSize="9" fontWeight="bold">B{i + 1}</text></g> } return null; })}
+              {/* FIX: Cast `cab` to `any` because TypeScript infers its type as `unknown` from Object.entries, causing a compilation error. */}
+              {effectiveWiringMode === 'auto' && viewMode === 'data' && Object.entries(dataGroupLabelCabinets).map(([idx, cab]) => { const i = parseInt(idx); if(visibleDataPorts[i] && cab) { const {x, y} = getCoords((cab as any).row, (cab as any).col); return <g key={`data-label-${i}`}><circle cx={x + cabinetSize/2} cy={y + cabinetSize/2} r={cabinetSize/3} fill={DATA_COLORS[i % DATA_COLORS.length]} /><text x={x + cabinetSize/2} y={y + cabinetSize/2} textAnchor="middle" dy=".3em" fill="#0a0a0a" fontSize="10" fontWeight="bold">P{i + 1}</text></g> } return null; })}
+            
+              {effectiveWiringMode === 'manual' && currentManualPaths.map(path => {
+                if(path.cabinets.length > 0) {
+                    const i = path.id;
+                    const cab = path.cabinets[0];
+                    const { x, y } = getCoords(cab.row, cab.col);
+                    const color = viewMode === 'data' ? DATA_COLORS[i % DATA_COLORS.length] : POWER_COLORS[i % POWER_COLORS.length];
+                    const prefix = viewMode === 'data' ? 'P' : 'B';
+
+                    return (
+                        <g key={`manual-label-${viewMode}-${i}`}>
+                            <circle cx={x + cabinetSize / 2} cy={y + cabinetSize / 2} r={cabinetSize / 3} fill={color} />
+                            <text x={x + cabinetSize / 2} y={y + cabinetSize / 2} textAnchor="middle" dy=".3em" fill="#0a0a0a" fontSize="10" fontWeight="bold">{prefix}{i + 1}</text>
+                        </g>
+                    );
+                }
+                return null;
+              })}
             </g>
           </svg>
         </div>

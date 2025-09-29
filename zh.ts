@@ -85,5 +85,12 @@ export const zh = {
   "dataWiringDiagram": "数据接线图",
   "powerWiringDiagram": "电源接线图",
   "diagramView": "图表视图",
-  "powerView": "电源"
+  "powerView": "电源",
+  "wiringMode": "接线模式",
+  "autoMode": "自动",
+  "manualMode": "手动",
+  "selectPathToDraw": "选择一个电路/端口以开始绘制路径。",
+  "clearAllPaths": "清除所有路径",
+  "pathCapacity": "{count}/{limit}",
+  "pathComplete": "已满"
 };
