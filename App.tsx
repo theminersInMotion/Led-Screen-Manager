@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { CalculatorForm } from './components/CalculatorForm';
 import { ResultsDisplay } from './components/ResultsDisplay';
@@ -51,7 +53,7 @@ const App: React.FC = () => {
 
     if (
       !cabinetWidthPx || !cabinetHeightPx || !cabinetsHorizontal || !cabinetsVertical || 
-      !powerPerCabinetW || !voltage || !portCapacityPx || !cabinetWidthCm || !cabinetHeightCm
+      !powerPerCabinetW || !portCapacityPx || !cabinetWidthCm || !cabinetHeightCm
     ) {
       return {
         totalWidthPx: 0,
@@ -84,28 +86,30 @@ const App: React.FC = () => {
     const totalPixels = totalWidthPx * totalHeightPx;
     const totalCabinets = cabinetsHorizontal * cabinetsVertical;
     const totalPowerW = powerPerCabinetW * totalCabinets;
-    const totalAmps = totalPowerW / voltage;
+    const totalAmps = voltage > 0 ? totalPowerW / voltage : 0;
 
     const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
     const divisor = gcd(totalWidthPx, totalHeightPx);
-    const aspectRatio = `${totalWidthPx / divisor}:${totalHeightPx / divisor}`;
+    // FIX: Prevent division by zero when calculating aspect ratio if total resolution is zero.
+    const aspectRatio = divisor > 0 ? `${totalWidthPx / divisor}:${totalHeightPx / divisor}` : '0:0';
 
     const selectedVoltageStandard = VOLTAGE_OPTIONS.find(v => v.value === voltage) || VOLTAGE_OPTIONS[0];
 
-    const breakerResults: BreakerResult[] = selectedVoltageStandard.breakers.map(breakerAmps => {
-      const safeAmps = breakerAmps * 0.8;
-      const count = Math.ceil(totalAmps / safeAmps);
-      return { amps: breakerAmps, count: isNaN(count) ? 0 : count };
-    });
-
-    const ampsPerCabinet = powerPerCabinetW / voltage;
+    const ampsPerCabinet = voltage > 0 ? powerPerCabinetW / voltage : 0;
     const cabinetsPerBreaker: BreakerResult[] = selectedVoltageStandard.breakers.map(breakerAmps => {
         const safeAmps = breakerAmps * 0.8;
         const count = ampsPerCabinet > 0 ? Math.floor(safeAmps / ampsPerCabinet) : 0;
         return { amps: breakerAmps, count: isNaN(count) ? 0 : count };
     });
+    
+    // FIX: Calculate total breakers based on cabinet grouping, not total amperage, to avoid rounding discrepancies.
+    const breakerResults: BreakerResult[] = selectedVoltageStandard.breakers.map((breakerAmps, index) => {
+      const cabinetsOnThisBreakerType = cabinetsPerBreaker[index]?.count || 0;
+      const count = cabinetsOnThisBreakerType > 0 ? Math.ceil(totalCabinets / cabinetsOnThisBreakerType) : 0;
+      return { amps: breakerAmps, count: isNaN(count) ? 0 : count };
+    });
 
-    const requiredPorts = Math.ceil(totalPixels / portCapacityPx);
+    const requiredPorts = portCapacityPx > 0 ? Math.ceil(totalPixels / portCapacityPx) : 0;
     
     const allPresets = [...SYNC_PROCESSOR_PRESETS, ...ASYNC_PROCESSOR_PRESETS];
     const selectedPreset = allPresets.find(p => p.capacity === portCapacityPx && p.ports === processorPorts);
@@ -144,9 +148,9 @@ const App: React.FC = () => {
       totalAmps,
       breakerResults,
       cabinetsPerBreaker,
-      requiredPorts: isNaN(requiredPorts) ? 0 : requiredPorts,
-      totalProcessors: isNaN(totalProcessors) ? 0 : totalProcessors,
-      cabinetsPerPort: isNaN(cabinetsPerPort) ? 0 : cabinetsPerPort,
+      requiredPorts,
+      totalProcessors,
+      cabinetsPerPort,
       totalWidthM,
       totalHeightM,
       totalWidthFt,
@@ -161,24 +165,17 @@ const App: React.FC = () => {
   }, [config]);
 
   return (
-    <div className="min-h-screen bg-brand-primary p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen bg-brand-primary text-brand-text-primary p-4 sm:p-8 font-sans">
       <div className="max-w-7xl mx-auto">
-        <header className="flex items-center justify-between gap-4 mb-8 no-print">
+        <header className="flex flex-wrap justify-between items-center gap-4 mb-8">
           <div className="flex items-center gap-4">
             <Logo />
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-brand-text-primary tracking-tight">
-                {t('appName')}
-              </h1>
-              <p className="text-brand-text-secondary text-sm sm:text-base">
-                {t('appDescription')}
-              </p>
-            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-brand-text-primary">{t('appName')}</h1>
           </div>
           <LanguageSwitcher />
         </header>
-        <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1 no-print">
+        <main className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="lg:col-span-1">
             <CalculatorForm config={config} onConfigChange={handleConfigChange} />
           </div>
           <div className="lg:col-span-2">

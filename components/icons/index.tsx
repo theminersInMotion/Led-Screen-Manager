@@ -18,3 +18,4 @@ export * from './BottomLeftIcon';
 export * from './BottomRightIcon';
 export * from './PrintIcon';
 export * from './DownloadIcon';
+export * from './AddIcon';

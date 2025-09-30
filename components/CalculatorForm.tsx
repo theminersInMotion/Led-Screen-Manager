@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import type { ScreenConfig, ProcessorPreset } from '../types';
 import { Card } from './ui/Card';
@@ -16,12 +18,26 @@ export const CalculatorForm: React.FC<CalculatorFormProps> = ({ config, onConfig
   const { t } = useI18n();
     
   const handleInputChange = <K extends keyof ScreenConfig>(key: K, value: string) => {
-      const numericValue = parseFloat(value);
-      if (!isNaN(numericValue) && numericValue >= 0) {
-        onConfigChange({ [key]: numericValue });
-      } else if (value === '') {
-        onConfigChange({ [key]: 0 as ScreenConfig[K]});
-      }
+    // Fields that should have a minimum value of 1 instead of 0 for practical calculations.
+    const fieldsWithMinOne: Array<keyof ScreenConfig> = [
+      'cabinetWidthPx',
+      'cabinetHeightPx',
+      'cabinetWidthCm',
+      'cabinetHeightCm',
+      'cabinetsHorizontal',
+      'cabinetsVertical',
+    ];
+
+    const isMinOneField = fieldsWithMinOne.includes(key);
+    const defaultValue = isMinOneField ? 1 : 0;
+    
+    const numericValue = parseFloat(value);
+    
+    // Sanitize input: Use the default value (1 or 0) if the parsed value is not a valid, non-negative number.
+    // This handles empty strings, non-numeric characters, and negative numbers.
+    const sanitizedValue = (!isNaN(numericValue) && numericValue >= 0) ? numericValue : defaultValue;
+
+    onConfigChange({ [key]: sanitizedValue as ScreenConfig[K] });
   };
 
   const handlePresetClick = (preset: ProcessorPreset) => {

@@ -28,6 +28,7 @@ export const zh = {
   "totalResolution": "总分辨率",
   "pixels": "像素",
   "totalCabinets": "总箱体数",
+  "cabinets": "箱体",
   "cabinetsLayout": "{h} 水平 x {v} 垂直",
   "totalScreenSize": "总屏幕尺寸",
   "aspectRatio": "宽高比",
@@ -92,5 +93,9 @@ export const zh = {
   "selectPathToDraw": "选择一个电路/端口以开始绘制路径。",
   "clearAllPaths": "清除所有路径",
   "pathCapacity": "{count}/{limit}",
-  "pathComplete": "已满"
+  "pathComplete": "已满",
+  "addPort": "添加端口",
+  "addCircuit": "添加电路",
+  "diagramTooLargeError": "图表太大无法渲染",
+  "diagramTooLargeErrorHint": "由于性能限制，无法为超过 {limit} 个箱体的屏幕显示接线图。"
 };

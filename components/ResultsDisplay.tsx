@@ -30,6 +30,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
   const [isPrinting, setIsPrinting] = useState(false);
   const [isSavingPdf, setIsSavingPdf] = useState(false);
   const [paperSize, setPaperSize] = useState<'a4' | 'letter'>('a4');
+  const [selectedBreakerAmps, setSelectedBreakerAmps] = useState<number | null>(null);
   const [diagramState, setDiagramState] = useState<DiagramState>({
     dataStartCorner: 'bottomLeft',
     dataWiringPattern: 'vertical',
@@ -43,8 +44,9 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
   useEffect(() => {
     const totalDataGroups = results.cabinetsPerPort > 0 ? Math.ceil(results.totalCabinets / results.cabinetsPerPort) : 0;
     
-    const highestAmpsBreakerResult = [...results.cabinetsPerBreaker].sort((a, b) => b.amps - a.amps)[0];
-    const cabinetsPerPowerGroup = highestAmpsBreakerResult?.count || 0;
+    // This effect now depends on the selected breaker
+    const selectedBreaker = results.cabinetsPerBreaker.find(b => b.amps === selectedBreakerAmps) || [...results.cabinetsPerBreaker].sort((a, b) => b.amps - a.amps)[0];
+    const cabinetsPerPowerGroup = selectedBreaker?.count || 0;
     const totalPowerGroups = cabinetsPerPowerGroup > 0 ? Math.ceil(results.totalCabinets / cabinetsPerPowerGroup) : 0;
 
     setDiagramState(prev => ({
@@ -52,10 +54,28 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
       visibleDataPorts: Object.fromEntries(Array.from({ length: totalDataGroups }, (_, i) => [i, true])),
       visiblePowerBreakers: Object.fromEntries(Array.from({ length: totalPowerGroups }, (_, i) => [i, true]))
     }));
-  }, [results.totalCabinets, results.cabinetsPerPort, results.cabinetsPerBreaker]);
+  }, [results.totalCabinets, results.cabinetsPerPort, results.cabinetsPerBreaker, selectedBreakerAmps]);
+
+  // Effect to set the default selected breaker
+  useEffect(() => {
+    if (results.cabinetsPerBreaker.length > 0) {
+      const highestAmps = Math.max(...results.cabinetsPerBreaker.map(b => b.amps));
+      // Only set if the current selection is invalid or not present among available breakers
+      if (!selectedBreakerAmps || !results.cabinetsPerBreaker.some(b => b.amps === selectedBreakerAmps)) {
+          setSelectedBreakerAmps(highestAmps);
+      }
+    } else {
+      setSelectedBreakerAmps(null);
+    }
+  }, [results.cabinetsPerBreaker, selectedBreakerAmps]);
+
 
   const handleDiagramStateChange = (newState: Partial<DiagramState>) => {
     setDiagramState(prevState => ({ ...prevState, ...newState }));
+  };
+  
+  const handleBreakerSelect = (amps: number) => {
+    setSelectedBreakerAmps(amps);
   };
 
   const handlePrint = () => {
@@ -132,7 +152,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
     return () => {
         portalRoot.classList.remove('pdf-capture-mode');
     };
-  }, [isSavingPdf, paperSize, diagramState]);
+  }, [isSavingPdf, paperSize, diagramState, selectedBreakerAmps]); // Added selectedBreakerAmps to dependency array
 
   // Effect for Browser Printing
   useEffect(() => {
@@ -185,6 +205,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
               results={results}
               isPrintMode={true}
               diagramState={{ ...diagramState, viewMode: 'data' }}
+              selectedBreakerAmps={selectedBreakerAmps}
             />
           </div>
           <div style={{ pageBreakBefore: 'always', paddingTop: '1rem' }}>
@@ -196,6 +217,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
               results={results}
               isPrintMode={true}
               diagramState={{ ...diagramState, viewMode: 'power' }}
+              selectedBreakerAmps={selectedBreakerAmps}
             />
           </div>
         </PrintPortal>
@@ -203,7 +225,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
 
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 no-print">
-            <h2 className="text-2xl font-bold text-brand-text-primary whitespace-nowrap">{t('summary')}</h2>
+            <h2 className="text-2xl font-bold text-brand-text-primary">{t('summary')}</h2>
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
                 <div>
                   <label className="sr-only">{t('paperSize')}</label>
@@ -216,24 +238,29 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
                 <button
                   onClick={handleSavePdf}
                   disabled={isSavingPdf}
-                  className="flex items-center gap-2 bg-brand-secondary hover:bg-gray-700 text-brand-text-primary font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 bg-brand-secondary hover:bg-gray-700 text-brand-text-primary font-bold py-2 px-2 sm:px-4 rounded-lg transition-colors disabled:opacity-50"
                   aria-label={t('savePdf')}
                 >
                   <DownloadIcon />
-                  {isSavingPdf ? 'Saving...' : t('savePdf')}
+                  <span className="hidden sm:inline">{isSavingPdf ? 'Saving...' : t('savePdf')}</span>
                 </button>
                 <button
                   onClick={handlePrint}
-                  className="flex items-center gap-2 bg-brand-secondary hover:bg-gray-700 text-brand-text-primary font-bold py-2 px-4 rounded-lg transition-colors"
+                  className="flex items-center gap-2 bg-brand-secondary hover:bg-gray-700 text-brand-text-primary font-bold py-2 px-2 sm:px-4 rounded-lg transition-colors"
                   aria-label={t('printSummary')}
                 >
                   <PrintIcon />
-                  {t('print')}
+                  <span className="hidden sm:inline">{t('print')}</span>
                 </button>
             </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 printable-section">
-          <ResultsGrid results={results} config={config} />
+          <ResultsGrid 
+            results={results} 
+            config={config} 
+            selectedBreakerAmps={selectedBreakerAmps}
+            onBreakerSelect={handleBreakerSelect}
+          />
         </div>
       </div>
       <div className="no-print">
@@ -242,6 +269,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, config 
             results={results}
             diagramState={diagramState}
             onDiagramStateChange={handleDiagramStateChange}
+            selectedBreakerAmps={selectedBreakerAmps}
         />
       </div>
     </div>

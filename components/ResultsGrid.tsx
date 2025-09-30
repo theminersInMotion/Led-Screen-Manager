@@ -8,9 +8,11 @@ import { useI18n } from '../i18n';
 interface ResultsGridProps {
   results: CalculationResults;
   config: ScreenConfig;
+  selectedBreakerAmps?: number | null;
+  onBreakerSelect?: (amps: number) => void;
 }
 
-export const ResultsGrid: React.FC<ResultsGridProps> = ({ results, config }) => {
+export const ResultsGrid: React.FC<ResultsGridProps> = ({ results, config, selectedBreakerAmps, onBreakerSelect }) => {
   const { t } = useI18n();
   const allPresets = [...SYNC_PROCESSOR_PRESETS, ...ASYNC_PROCESSOR_PRESETS];
   const selectedProcessor = allPresets.find(p => p.capacity === config.portCapacityPx && p.ports === config.processorPorts);
@@ -40,8 +42,8 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({ results, config }) => 
       <ResultCard
         icon={<CabinetIcon />}
         label={t('totalCabinets')}
-        value={results.totalCabinets.toLocaleString()}
-        subValue={t('cabinetsLayout', {h: config.cabinetsHorizontal, v: config.cabinetsVertical})}
+        value={t('cabinetsLayout', {h: config.cabinetsHorizontal, v: config.cabinetsVertical})}
+        subValue={`${results.totalCabinets.toLocaleString()} ${t('cabinets')}`}
       />
       <ResultCard
         icon={<DimensionIcon />}
@@ -123,6 +125,8 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({ results, config }) => 
           label={t('cabinetsPerBreaker', { amps: breaker.amps })}
           value={breaker.count.toLocaleString()}
           subValue={t('at80Capacity')}
+          onClick={() => onBreakerSelect?.(breaker.amps)}
+          isSelected={selectedBreakerAmps === breaker.amps}
         />
       ))}
       <ResultCard

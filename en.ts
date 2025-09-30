@@ -28,6 +28,7 @@ export const en = {
   "totalResolution": "Total Resolution",
   "pixels": "pixels",
   "totalCabinets": "Total Cabinets",
+  "cabinets": "cabinets",
   "cabinetsLayout": "{h} H x {v} V",
   "totalScreenSize": "Total Screen Size",
   "aspectRatio": "Aspect Ratio",
@@ -92,5 +93,9 @@ export const en = {
   "selectPathToDraw": "Select a circuit/port to start drawing its path.",
   "clearAllPaths": "Clear All Paths",
   "pathCapacity": "{count}/{limit}",
-  "pathComplete": "Full"
+  "pathComplete": "Full",
+  "addPort": "Add Port",
+  "addCircuit": "Add Circuit",
+  "diagramTooLargeError": "Diagram Too Large to Render",
+  "diagramTooLargeErrorHint": "The wiring diagram cannot be displayed for screens with more than {limit} cabinets due to performance limitations."
 };
