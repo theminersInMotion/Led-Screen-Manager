@@ -74,7 +74,7 @@ const calculateSerpentinePath = (startCorner: StartCorner, wiringPattern: Wiring
 }
 
 const useGrouping = (
-    cabinetsPerGroup: number,
+    cabinetsPerGroup: number, // The REAL capacity
     wiringPattern: WiringPattern,
     startCorner: StartCorner,
     serpentinePath: { row: number, col: number }[],
@@ -82,15 +82,32 @@ const useGrouping = (
     cabinetsHorizontal: number,
     totalCabinets: number,
 ) => {
-    const groupingStrategy = useMemo(() => {
-      // Use rectangular grouping only if it results in perfect, full-column/row groups.
-      if (wiringPattern === 'vertical' && cabinetsVertical > 0 && cabinetsPerGroup > 0 && cabinetsPerGroup % cabinetsVertical === 0) {
-        return 'rectangular';
-      }
-      if (wiringPattern === 'horizontal' && cabinetsHorizontal > 0 && cabinetsPerGroup > 0 && cabinetsPerGroup % cabinetsHorizontal === 0) {
-        return 'rectangular';
-      }
-      return 'contiguous';
+    // Determine the most practical grouping strategy and the effective number of cabinets per group for the diagram.
+    const { diagramCabinetsPerGroup, groupingStrategy } = useMemo(() => {
+        // Prefer rectangular grouping if it can form at least one full row/column.
+        if (wiringPattern === 'vertical' && cabinetsVertical > 0) {
+            const colsPerGroup = Math.floor(cabinetsPerGroup / cabinetsVertical);
+            if (colsPerGroup > 0) {
+                return {
+                    diagramCabinetsPerGroup: colsPerGroup * cabinetsVertical,
+                    groupingStrategy: 'rectangular' as const
+                };
+            }
+        }
+        if (wiringPattern === 'horizontal' && cabinetsHorizontal > 0) {
+            const rowsPerGroup = Math.floor(cabinetsPerGroup / cabinetsHorizontal);
+            if (rowsPerGroup > 0) {
+                return {
+                    diagramCabinetsPerGroup: rowsPerGroup * cabinetsHorizontal,
+                    groupingStrategy: 'rectangular' as const
+                };
+            }
+        }
+        // Fallback to contiguous grouping along the serpentine path.
+        return {
+            diagramCabinetsPerGroup: cabinetsPerGroup,
+            groupingStrategy: 'contiguous' as const
+        };
     }, [cabinetsPerGroup, wiringPattern, cabinetsVertical, cabinetsHorizontal]);
     
     const serpentinePathMap = useMemo(() => {
@@ -102,18 +119,18 @@ const useGrouping = (
     }, [serpentinePath]);
 
     const getGroupIndex = useCallback((r: number, c: number): number => {
-      if (cabinetsPerGroup <= 0) return -1;
+      if (diagramCabinetsPerGroup <= 0) return -1;
+      
       if (groupingStrategy === 'rectangular') {
+        // With rectangular grouping, we group by full columns/rows, ignoring serpentine path order for grouping.
         if (wiringPattern === 'vertical') {
-          const colsPerGroup = Math.floor(cabinetsPerGroup / cabinetsVertical);
-          if (colsPerGroup === 0) return -1;
+          const colsPerGroup = diagramCabinetsPerGroup / cabinetsVertical;
           const colIndices = Array.from({ length: cabinetsHorizontal }, (_, i) => i);
           if (startCorner.includes('Right')) colIndices.reverse();
           const orderedColIndex = colIndices.indexOf(c);
           return Math.floor(orderedColIndex / colsPerGroup);
         } else { // horizontal
-          const rowsPerGroup = Math.floor(cabinetsPerGroup / cabinetsHorizontal);
-          if (rowsPerGroup === 0) return -1;
+          const rowsPerGroup = diagramCabinetsPerGroup / cabinetsHorizontal;
           const rowIndices = Array.from({ length: cabinetsVertical }, (_, i) => i);
           if (startCorner.includes('bottom')) rowIndices.reverse();
           const orderedRowIndex = rowIndices.indexOf(r);
@@ -121,14 +138,14 @@ const useGrouping = (
         }
       } else { // contiguous
         const cabinetIndex = serpentinePathMap.get(`${r},${c}`);
-        return cabinetIndex !== undefined ? Math.floor(cabinetIndex / cabinetsPerGroup) : -1;
+        return cabinetIndex !== undefined ? Math.floor(cabinetIndex / diagramCabinetsPerGroup) : -1;
       }
-    }, [groupingStrategy, cabinetsPerGroup, wiringPattern, startCorner, serpentinePathMap, cabinetsVertical, cabinetsHorizontal]);
+    }, [groupingStrategy, diagramCabinetsPerGroup, wiringPattern, startCorner, serpentinePathMap, cabinetsVertical, cabinetsHorizontal]);
     
     const totalGroups = useMemo(() => {
-        if (cabinetsPerGroup <= 0 || totalCabinets === 0) return 0;
-        return Math.ceil(totalCabinets / cabinetsPerGroup);
-    }, [cabinetsPerGroup, totalCabinets]);
+        if (diagramCabinetsPerGroup <= 0 || totalCabinets === 0) return 0;
+        return Math.ceil(totalCabinets / diagramCabinetsPerGroup);
+    }, [diagramCabinetsPerGroup, totalCabinets]);
 
     const groupStartCabinets = useMemo(() => serpentinePath.reduce((acc, cabinet) => {
         const groupIndex = getGroupIndex(cabinet.row, cabinet.col);
@@ -148,7 +165,7 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
   selectedBreakerAmps
 }) => {
   const { t } = useI18n();
-  const { cabinetsHorizontal, cabinetsVertical } = config;
+  const { cabinetsHorizontal, cabinetsVertical, cabinetWidthPx, cabinetHeightPx } = config;
   const totalCabinets = cabinetsHorizontal * cabinetsVertical;
 
   // EARLY RETURN: Prevent performance issues with huge cabinet counts.
@@ -332,18 +349,19 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
           const paths = viewMode === 'data' ? manualDataPaths : manualPowerPaths;
           paths.forEach(path => drawPath(path.cabinets));
       } else { // Auto mode
-          const cabinetsPerGroup = viewMode === 'data' ? results.cabinetsPerPort : (selectedBreakerResult?.count || 0);
-          if (cabinetsPerGroup <= 0) return;
-          
-          const totalGroups = viewMode === 'data' ? totalDataGroups : totalPowerGroups;
-          const serpentinePath = viewMode === 'data' ? dataSerpentinePath : powerSerpentinePath;
-          const visibleGroups = viewMode === 'data' ? visibleDataPorts : visiblePowerBreakers;
-          
-          for (let i = 0; i < totalGroups; i++) {
-              if (!visibleGroups[i]) continue;
-              const pathCabinets = serpentinePath.slice(i * cabinetsPerGroup, (i + 1) * cabinetsPerGroup);
-              drawPath(pathCabinets);
-          }
+        const totalGroups = viewMode === 'data' ? totalDataGroups : totalPowerGroups;
+        const serpentinePath = viewMode === 'data' ? dataSerpentinePath : powerSerpentinePath;
+        const visibleGroups = viewMode === 'data' ? visibleDataPorts : visiblePowerBreakers;
+        const getGroupIndex = viewMode === 'data' ? getDataGroupIndex : getPowerGroupIndex;
+        
+        const serpentinePathWithIndex = serpentinePath.map((p, index) => ({ ...p, index }));
+
+        for (let i = 0; i < totalGroups; i++) {
+            if (!visibleGroups[i]) continue;
+            const groupCabinets = serpentinePathWithIndex.filter(p => getGroupIndex(p.row, p.col) === i);
+            groupCabinets.sort((a, b) => a.index - b.index);
+            drawPath(groupCabinets);
+        }
       }
     };
 
@@ -351,8 +369,9 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
       const container = canvas.parentElement;
       if (container) {
           const gap = 2;
+          const cabinetHeight = cabinetSize;
           const width = cabinetsHorizontal * (cabinetSize + gap) - gap;
-          const height = cabinetsVertical * (cabinetSize + gap) - gap;
+          const height = cabinetsVertical * (cabinetHeight + gap) - gap;
           
           canvas.width = width;
           canvas.height = height;
@@ -366,10 +385,10 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
   }, [
       cabinetsHorizontal, cabinetsVertical, effectiveWiringMode, 
       viewMode, manualDataPaths, manualPowerPaths,
-      results.cabinetsPerPort, selectedBreakerResult,
       dataSerpentinePath, powerSerpentinePath,
       visibleDataPorts, visiblePowerBreakers,
-      totalDataGroups, totalPowerGroups, cabinetSize
+      totalDataGroups, totalPowerGroups, cabinetSize,
+      getDataGroupIndex, getPowerGroupIndex
   ]);
 
   if (totalCabinets === 0 || (viewMode === 'data' && results.cabinetsPerPort === 0) || (viewMode === 'power' && (selectedBreakerResult?.count || 0) === 0)) {
@@ -462,10 +481,6 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
       </div>
     );
   };
-  
-  const cabinetAspectRatio = useMemo(() => (
-    config.cabinetWidthPx > 0 ? config.cabinetHeightPx / config.cabinetWidthPx : 1
-  ), [config.cabinetHeightPx, config.cabinetWidthPx]);
 
   return (
     <Card title={t('wiringDiagram')}>
@@ -530,7 +545,7 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
       <div className="mt-6 flex flex-col items-center">
         <div 
           ref={gridContainerRef}
-          className="relative w-full aspect-video max-w-full overflow-x-auto p-2 bg-brand-primary rounded-lg"
+          className="relative w-full max-w-full overflow-x-auto p-2 bg-brand-primary rounded-lg"
           style={{ touchAction: 'none' }}
         >
           <div 
@@ -564,13 +579,14 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
                     }
                 }
 
+                const cabinetHeight = cabinetSize;
                 return (
                   <div
                     key={i}
                     className="relative flex items-center justify-center text-white text-[8px] font-bold"
                     style={{ 
                         width: `${cabinetSize}px`, 
-                        height: `${cabinetSize * cabinetAspectRatio}px`,
+                        height: `${cabinetHeight}px`,
                         backgroundColor,
                         borderRadius: '2px',
                         cursor: effectiveWiringMode === 'manual' && activePathId !== null ? 'pointer' : 'default',
