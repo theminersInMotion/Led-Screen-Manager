@@ -191,6 +191,7 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
   const [manualPowerPaths, setManualPowerPaths] = useState<Path[]>([]);
   const [activePathId, setActivePathId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [lastDraggedCabinet, setLastDraggedCabinet] = useState<{row: number, col: number} | null>(null);
   const gridContainerRef = React.useRef<HTMLDivElement>(null);
   const [cabinetSize, setCabinetSize] = useState(20);
 
@@ -239,7 +240,7 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
     }
   };
 
-  const handleCabinetClickOrDrag = (row: number, col: number) => {
+  const handleCabinetClickOrDrag = useCallback((row: number, col: number) => {
     if (wiringMode !== 'manual' || activePathId === null) return;
 
     const isData = viewMode === 'data';
@@ -269,29 +270,65 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
             return path;
         }
     }));
-  };
-  
+  }, [activePathId, manualDataPaths, manualPowerPaths, results.cabinetsPerPort, selectedBreakerResult, viewMode, wiringMode]);
+
   const handleMouseDown = (row: number, col: number) => {
     setIsDragging(true);
     handleCabinetClickOrDrag(row, col);
+    setLastDraggedCabinet({ row, col });
   };
   
   const handleMouseEnter = (row: number, col: number) => {
     if (isDragging) {
-      handleCabinetClickOrDrag(row, col);
+      if (!lastDraggedCabinet || lastDraggedCabinet.row !== row || lastDraggedCabinet.col !== col) {
+          handleCabinetClickOrDrag(row, col);
+          setLastDraggedCabinet({ row, col });
+      }
     }
   };
   
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handleDragEnd = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false);
+      setLastDraggedCabinet(null);
+    }
+  }, [isDragging]);
+
+  const handleTouchStart = (row: number, col: number) => {
+    setIsDragging(true);
+    handleCabinetClickOrDrag(row, col);
+    setLastDraggedCabinet({ row, col });
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+  
+    const touch = e.touches[0];
+    if (!touch) return;
+  
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+  
+    if (element instanceof HTMLElement && element.dataset.row && element.dataset.col) {
+      const row = parseInt(element.dataset.row, 10);
+      const col = parseInt(element.dataset.col, 10);
+  
+      if (!isNaN(row) && !isNaN(col)) {
+        if (!lastDraggedCabinet || lastDraggedCabinet.row !== row || lastDraggedCabinet.col !== col) {
+          handleCabinetClickOrDrag(row, col);
+          setLastDraggedCabinet({ row, col });
+        }
+      }
+    }
   };
 
   useEffect(() => {
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mouseup', handleDragEnd);
+    window.addEventListener('touchend', handleDragEnd);
     return () => {
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchend', handleDragEnd);
     };
-  }, []);
+  }, [handleDragEnd]);
 
   const handleAddPath = () => {
     const isData = viewMode === 'data';
@@ -547,10 +584,13 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
           ref={gridContainerRef}
           className="relative w-full max-w-full overflow-x-auto p-2 bg-brand-primary rounded-lg"
           style={{ touchAction: 'none' }}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleDragEnd}
+          onTouchCancel={handleDragEnd}
         >
           <div 
             className="relative inline-block"
-            onMouseLeave={handleMouseUp}
+            onMouseLeave={handleDragEnd}
           >
             <div className="grid gap-[2px]" style={{ gridTemplateColumns: `repeat(${cabinetsHorizontal}, ${cabinetSize}px)` }}>
               {Array.from({ length: totalCabinets }).map((_, i) => {
@@ -583,6 +623,8 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
                 return (
                   <div
                     key={i}
+                    data-row={row}
+                    data-col={col}
                     className="relative flex items-center justify-center text-white text-[8px] font-bold"
                     style={{ 
                         width: `${cabinetSize}px`, 
@@ -595,6 +637,7 @@ export const WiringDiagram: React.FC<WiringDiagramProps> = ({
                     }}
                     onMouseDown={() => handleMouseDown(row, col)}
                     onMouseEnter={() => handleMouseEnter(row, col)}
+                    onTouchStart={() => handleTouchStart(row, col)}
                   >
                     {label}
                   </div>
