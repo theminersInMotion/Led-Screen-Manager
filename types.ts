@@ -66,3 +66,10 @@ export interface VoltageStandard {
     value: number;
     breakers: number[];
 }
+
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: string;
+  config: ScreenConfig;
+}
